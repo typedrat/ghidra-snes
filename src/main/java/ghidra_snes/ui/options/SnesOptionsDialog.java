@@ -2,41 +2,38 @@
 package ghidra_snes.ui.options;
 
 import docking.DialogComponentProvider;
+import docking.widgets.MultiLineLabel;
+import docking.widgets.label.GDLabel;
 import docking.widgets.tree.GTree;
+import docking.widgets.tree.GTreeLazyNode;
 import docking.widgets.tree.GTreeNode;
-import generic.theme.GIcon;
 import ghidra.program.model.listing.Program;
+import ghidra.util.Swing;
+import ghidra.util.layout.PairLayout;
 import ghidra_snes.options.SnesOptions;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.JComponent;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JSeparator;
 import javax.swing.JSplitPane;
-import javax.swing.SwingConstants;
+import javax.swing.event.TreeExpansionEvent;
+import javax.swing.event.TreeExpansionListener;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
-import resources.Icons;
 
 public final class SnesOptionsDialog extends DialogComponentProvider {
   private static final String ROOT_PAGE = "/";
   private static final String MEMORY_PAGE = "/memory/";
   private static final String SYSTEM_BANKS_PAGE = "/memory/system_banks";
   private static final String ROM_MIRRORS_PAGE = "/memory/rom_mirrors";
-
-  private static final Icon OPEN_FOLDER_ICON = Icons.OPEN_FOLDER_ICON;
-  private static final Icon CLOSED_FOLDER_ICON = Icons.CLOSED_FOLDER_ICON;
-  private static final Icon PROPERTIES_ICON = new GIcon("icon.properties");
 
   private final Program currentProgram;
   private final CardLayout pageLayout = new CardLayout();
@@ -54,10 +51,11 @@ public final class SnesOptionsDialog extends DialogComponentProvider {
 
   private JComponent buildMainPanel() {
     GTree tree = buildTree();
-    pagePanel.add(buildRootPage(), ROOT_PAGE);
-    pagePanel.add(buildEmptyPage("Memory Map"), MEMORY_PAGE);
-    pagePanel.add(buildEmptyPage("System Banks (scaffold only)"), SYSTEM_BANKS_PAGE);
-    pagePanel.add(buildEmptyPage("ROM Mirrors (scaffold only)"), ROM_MIRRORS_PAGE);
+
+    pagePanel.add(buildRomDetailsPage(), ROOT_PAGE);
+    pagePanel.add(buildPlaceholderPage("Memory Map"), MEMORY_PAGE);
+    pagePanel.add(buildPlaceholderPage("System Banks (scaffold only)"), SYSTEM_BANKS_PAGE);
+    pagePanel.add(buildPlaceholderPage("ROM Mirrors (scaffold only)"), ROM_MIRRORS_PAGE);
 
     JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, tree, pagePanel);
     splitPane.setResizeWeight(0.0);
@@ -71,18 +69,18 @@ public final class SnesOptionsDialog extends DialogComponentProvider {
   }
 
   private GTree buildTree() {
-    SnesOptionsTreeNode rootNode = SnesOptionsTreeNode.folder("SNES Options", ROOT_PAGE);
+    SnesOptionsTreeNode rootNode = SnesOptionsTreeNode.folder("SNES Options", null, false);
     SnesOptionsTreeNode romDetailsNode = SnesOptionsTreeNode.leaf("ROM Details", ROOT_PAGE);
-    SnesOptionsTreeNode memoryMapNode = SnesOptionsTreeNode.folder("Memory Map", MEMORY_PAGE);
+    SnesOptionsTreeNode memoryMapNode = SnesOptionsTreeNode.folder("Memory Map", MEMORY_PAGE, false);
     SnesOptionsTreeNode systemBanksNode =
       SnesOptionsTreeNode.leaf("System Banks", SYSTEM_BANKS_PAGE);
     SnesOptionsTreeNode romMirrorsNode =
       SnesOptionsTreeNode.leaf("ROM Mirrors", ROM_MIRRORS_PAGE);
 
-    rootNode.addNode(romDetailsNode);
-    rootNode.addNode(memoryMapNode);
-    memoryMapNode.addNode(systemBanksNode);
-    memoryMapNode.addNode(romMirrorsNode);
+    rootNode.addChild(romDetailsNode);
+    rootNode.addChild(memoryMapNode);
+    memoryMapNode.addChild(systemBanksNode);
+    memoryMapNode.addChild(romMirrorsNode);
 
     registerPage(romDetailsNode);
     registerPage(memoryMapNode);
@@ -94,16 +92,41 @@ public final class SnesOptionsDialog extends DialogComponentProvider {
     tree.setShowsRootHandles(true);
     tree.setRootNodeAllowedToCollapse(false);
     tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
-    tree.expandPath(rootNode);
     tree.expandPath(memoryMapNode);
     tree.addGTreeSelectionListener(event -> showSelectedPage(tree));
+    tree.addTreeExpansionListener(createExpansionListener(tree));
     tree.setSelectedNode(romDetailsNode);
+
     return tree;
   }
 
+  private TreeExpansionListener createExpansionListener(GTree tree) {
+    return new TreeExpansionListener() {
+      @Override
+      public void treeExpanded(TreeExpansionEvent event) {
+        // no-op
+      }
+
+      @Override
+      public void treeCollapsed(TreeExpansionEvent event) {
+        Object node = event.getPath().getLastPathComponent();
+        if (!(node instanceof SnesOptionsTreeNode optionsNode)) {
+          return;
+        }
+        if (optionsNode.isCollapsible()) {
+          return;
+        }
+
+        TreePath collapsedPath = event.getPath();
+        Swing.runLater(() -> tree.expandPath(collapsedPath));
+      }
+    };
+  }
+
   private void registerPage(SnesOptionsTreeNode node) {
-    if (node.getPageKey() != null) {
-      nodeToPage.put(node, node.getPageKey());
+    String pageKey = node.getPageKey();
+    if (pageKey != null) {
+      nodeToPage.put(node, pageKey);
     }
   }
 
@@ -115,88 +138,71 @@ public final class SnesOptionsDialog extends DialogComponentProvider {
     }
 
     Object selectedNode = selectionPath.getLastPathComponent();
-    if (!(selectedNode instanceof GTreeNode)) {
+    if (!(selectedNode instanceof GTreeNode treeNode)) {
       pageLayout.show(pagePanel, ROOT_PAGE);
       return;
     }
 
-    String page = nodeToPage.getOrDefault((GTreeNode) selectedNode, ROOT_PAGE);
+    String page = nodeToPage.getOrDefault(treeNode, ROOT_PAGE);
     pageLayout.show(pagePanel, page);
   }
 
-  private JComponent buildEmptyPage(String title) {
+  private JComponent buildRomDetailsPage() {
     JPanel page = new JPanel(new BorderLayout());
     page.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
 
-    JLabel label = new JLabel(title, SwingConstants.CENTER);
-    label.setPreferredSize(new Dimension(300, 60));
-    page.add(label, BorderLayout.CENTER);
-    return page;
-  }
-
-  private JComponent buildRootPage() {
-    JPanel page = new JPanel(new BorderLayout());
-    page.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
+    GDLabel titleLabel = new GDLabel("ROM Details");
+    titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 18f));
+    page.add(titleLabel, BorderLayout.NORTH);
 
     if (currentProgram == null) {
-      page.add(new JLabel("No open program.", SwingConstants.CENTER), BorderLayout.CENTER);
+      MultiLineLabel emptyState = new MultiLineLabel("No open program.");
+      emptyState.setAlignment(MultiLineLabel.LEFT);
+      JPanel emptyPanel = new JPanel(new BorderLayout());
+      emptyPanel.setBorder(BorderFactory.createEmptyBorder(16, 0, 0, 0));
+      emptyPanel.add(emptyState, BorderLayout.NORTH);
+      page.add(emptyPanel, BorderLayout.CENTER);
       return page;
     }
 
-    JPanel content = new JPanel(new GridBagLayout());
-    GridBagConstraints constraints = new GridBagConstraints();
-    constraints.gridx = 0;
-    constraints.gridy = 0;
-    constraints.gridwidth = 2;
-    constraints.fill = GridBagConstraints.HORIZONTAL;
-    constraints.anchor = GridBagConstraints.WEST;
-    constraints.insets = new Insets(0, 0, 16, 0);
+    JPanel detailsPanel = new JPanel(new PairLayout(8, 16));
+    detailsPanel.setBorder(BorderFactory.createCompoundBorder(
+      BorderFactory.createTitledBorder("Current Program"),
+      BorderFactory.createEmptyBorder(10, 10, 10, 10)));
 
-    JLabel titleLabel = new JLabel("ROM Details");
-    titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 18f));
-    content.add(titleLabel, constraints);
+    addInfoRow(detailsPanel, "Program", currentProgram.getName());
+    addInfoRow(detailsPanel, "Executable path", normalized(currentProgram.getExecutablePath()));
+    addInfoRow(detailsPanel, "Mapper", SnesOptions.getCartMapper(currentProgram));
+    addInfoRow(detailsPanel, "ROM title", normalized(SnesOptions.getCartTitle(currentProgram)));
+    addInfoRow(detailsPanel, "ROM size", formatBytes(SnesOptions.getRomSizeBytes(currentProgram)));
+    addInfoRow(detailsPanel, "SRAM size", formatBytes(SnesOptions.getCartSramSize(currentProgram)));
+    addInfoRow(detailsPanel, "SMC header", String.valueOf(SnesOptions.hasSmcHeader(currentProgram)));
+    addInfoRow(detailsPanel, "ROM offset", formatHex(SnesOptions.getFileRomOffset(currentProgram)));
+    addInfoRow(detailsPanel, "Header location", formatHex(SnesOptions.getRomHeader(currentProgram).location()));
+    addInfoRow(detailsPanel, "Metadata source", SnesOptions.getMetadataSource(currentProgram));
 
-    constraints.gridy = 1;
-    content.add(new JSeparator(), constraints);
-
-    int row = 2;
-    addInfoRow(content, row++, "Program", currentProgram.getName());
-    addInfoRow(content, row++, "Executable path", normalized(currentProgram.getExecutablePath()));
-    addInfoRow(content, row++, "Mapper", SnesOptions.getCartMapper(currentProgram));
-    addInfoRow(content, row++, "ROM title", normalized(SnesOptions.getCartTitle(currentProgram)));
-    addInfoRow(content, row++, "ROM size", formatBytes(SnesOptions.getRomSizeBytes(currentProgram)));
-    addInfoRow(content, row++, "SRAM size", formatBytes(SnesOptions.getCartSramSize(currentProgram)));
-    addInfoRow(content, row++, "SMC header", String.valueOf(SnesOptions.hasSmcHeader(currentProgram)));
-    addInfoRow(content, row++, "ROM offset", formatHex(SnesOptions.getFileRomOffset(currentProgram)));
-    addInfoRow(content, row++, "Header location", formatHex(SnesOptions.getRomHeader(currentProgram).location()));
-    addInfoRow(content, row, "Metadata source", SnesOptions.getMetadataSource(currentProgram));
-
-    JPanel wrapper = new JPanel(new BorderLayout());
-    wrapper.add(content, BorderLayout.NORTH);
-    page.add(wrapper, BorderLayout.CENTER);
+    JPanel content = new JPanel(new BorderLayout());
+    content.setBorder(BorderFactory.createEmptyBorder(16, 0, 0, 0));
+    content.add(detailsPanel, BorderLayout.NORTH);
+    page.add(content, BorderLayout.CENTER);
     return page;
   }
 
-  private void addInfoRow(JPanel content, int row, String key, String value) {
-    GridBagConstraints keyConstraints = new GridBagConstraints();
-    keyConstraints.gridx = 0;
-    keyConstraints.gridy = row;
-    keyConstraints.anchor = GridBagConstraints.NORTHWEST;
-    keyConstraints.insets = new Insets(6, 0, 6, 18);
+  private JComponent buildPlaceholderPage(String title) {
+    JPanel page = new JPanel(new BorderLayout());
+    page.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
 
-    JLabel keyLabel = new JLabel(key);
+    MultiLineLabel label = new MultiLineLabel(title);
+    label.setAlignment(MultiLineLabel.LEFT);
+    page.add(label, BorderLayout.NORTH);
+    return page;
+  }
+
+  private void addInfoRow(JPanel detailsPanel, String key, String value) {
+    GDLabel keyLabel = new GDLabel(key + ":");
     keyLabel.setFont(keyLabel.getFont().deriveFont(Font.BOLD));
-    content.add(keyLabel, keyConstraints);
-
-    GridBagConstraints valueConstraints = new GridBagConstraints();
-    valueConstraints.gridx = 1;
-    valueConstraints.gridy = row;
-    valueConstraints.weightx = 1.0;
-    valueConstraints.fill = GridBagConstraints.HORIZONTAL;
-    valueConstraints.anchor = GridBagConstraints.NORTHWEST;
-    valueConstraints.insets = new Insets(6, 0, 6, 0);
-
-    content.add(new JLabel(value), valueConstraints);
+    detailsPanel.add(keyLabel);
+    detailsPanel.add(new GDLabel(value));
   }
 
   private static String normalized(String value) {
@@ -214,27 +220,43 @@ public final class SnesOptionsDialog extends DialogComponentProvider {
     return String.format("%d bytes (%s)", value, formatHex(value));
   }
 
-  private static final class SnesOptionsTreeNode extends GTreeNode {
+  private static final class SnesOptionsTreeNode extends GTreeLazyNode {
     private final String name;
     private final String pageKey;
     private final boolean leaf;
+    private final boolean collapsible;
+    private final List<GTreeNode> children = new ArrayList<>();
 
-    private SnesOptionsTreeNode(String name, String pageKey, boolean leaf) {
+    private SnesOptionsTreeNode(String name, String pageKey, boolean leaf, boolean collapsible) {
       this.name = name;
       this.pageKey = pageKey;
       this.leaf = leaf;
+      this.collapsible = collapsible;
     }
 
-    static SnesOptionsTreeNode folder(String name, String pageKey) {
-      return new SnesOptionsTreeNode(name, pageKey, false);
+    static SnesOptionsTreeNode folder(String name, String pageKey, boolean collapsible) {
+      return new SnesOptionsTreeNode(name, pageKey, false, collapsible);
     }
 
     static SnesOptionsTreeNode leaf(String name, String pageKey) {
-      return new SnesOptionsTreeNode(name, pageKey, true);
+      return new SnesOptionsTreeNode(name, pageKey, true, true);
+    }
+
+    void addChild(SnesOptionsTreeNode node) {
+      children.add(node);
     }
 
     String getPageKey() {
       return pageKey;
+    }
+
+    boolean isCollapsible() {
+      return collapsible;
+    }
+
+    @Override
+    protected List<GTreeNode> generateChildren() {
+      return new ArrayList<>(children);
     }
 
     @Override
@@ -244,10 +266,7 @@ public final class SnesOptionsDialog extends DialogComponentProvider {
 
     @Override
     public Icon getIcon(boolean isExpanded) {
-      if (leaf) {
-        return PROPERTIES_ICON;
-      }
-      return isExpanded ? OPEN_FOLDER_ICON : CLOSED_FOLDER_ICON;
+      return null;
     }
 
     @Override
