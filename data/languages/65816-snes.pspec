@@ -13,16 +13,16 @@
     Ghidra expects these vectors to be three bytes, but they are actually only two bytes in ROM
     (the 65816 always assumes that the highest byte is zero).
     You must add the entry points manually, or rely on a loader or scripts to set them up. -->
-    <symbol name="VEC_IRQ_EMULATION" address="00FFFE"/>
-    <symbol name="VEC_RESET_EMULATION" address="00FFFC"/>
-    <symbol name="VEC_NMI_EMULATION" address="00FFFA"/>
+    <symbol name="VEC_COP_NATIVE"      address="00FFE4"/>
+    <symbol name="VEC_BRK_NATIVE"      address="00FFE6"/>
+    <symbol name="VEC_ABORT_NATIVE"    address="00FFE8"/>
+    <symbol name="VEC_NMI_NATIVE"      address="00FFEA"/>
+    <symbol name="VEC_IRQ_NATIVE"      address="00FFEE"/>
+    <symbol name="VEC_COP_EMULATION"   address="00FFF4"/>
     <symbol name="VEC_ABORT_EMULATION" address="00FFF8"/>
-    <symbol name="VEC_COP_EMULATION" address="00FFF4"/>
-    <symbol name="VEC_IRQ_NATIVE" address="00FFEE"/>
-    <symbol name="VEC_NMI_NATIVE" address="00FFEA"/>
-    <symbol name="VEC_ABORT_NATIVE" address="00FFE8"/>
-    <symbol name="VEC_BRK_NATIVE" address="00FFE6"/>
-    <symbol name="VEC_COP_NATIVE" address="00FFE4"/>
+    <symbol name="VEC_NMI_EMULATION"   address="00FFFA"/>
+    <symbol name="VEC_RESET_EMULATION" address="00FFFC"/>
+    <symbol name="VEC_IRQ_EMULATION"   address="00FFFE"/>
 
     <!-- Adding more registers from undisbeliever's Register Cheat Sheet
     

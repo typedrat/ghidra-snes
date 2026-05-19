@@ -49,8 +49,7 @@ MemAbsIndLongJmp: [!$imm16]    is imm16  {
 
 # Absolute long.
 MemAbsLongJmp: !>$imm24    is imm24  {
-    local address:3 = imm24;
-    export *:3 address;
+    export *:3 imm24;
 }
 
 # PC relative.
