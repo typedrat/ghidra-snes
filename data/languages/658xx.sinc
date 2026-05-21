@@ -733,21 +733,21 @@ macro do_inc16(_out, _data) {
     Y = result;
 }
 
-JMP_OP: MemAbsJmp    is op=0x4c; MemAbsJmp  { export MemAbsJmp; }
-JMP_OP: MemAbsIndJmp    is op=0x6c; MemAbsIndJmp  { export MemAbsIndJmp; }
-JMP_OP: MemAbsIdxIndJmp    is op=0x7c; MemAbsIdxIndJmp  { export MemAbsIdxIndJmp; }
+JMP_OP: MemAbsJmp       is op=0x4c; MemAbsJmp       { export MemAbsJmp; }
+JMP_OP: MemAbsIndJmp    is op=0x6c; MemAbsIndJmp    { export MemAbsIndJmp; }
+JMP_OP: MemAbsIdxIndJmp is op=0x7c; MemAbsIdxIndJmp { export MemAbsIdxIndJmp; }
 
 # JMP
-:JMP JMP_OP    is (op=0x4c | op=0x6c | op=0x7c) ... & JMP_OP
+:JMP JMP_OP is (op=0x4c | op=0x6c | op=0x7c) ... & JMP_OP
 {
     goto JMP_OP;
 }
 
-JML_OP: MemAbsLongJmp    is op=0x5c; MemAbsLongJmp  { export MemAbsLongJmp; }
-JML_OP: MemAbsIndLongJmp    is op=0xdc; MemAbsIndLongJmp  { export MemAbsIndLongJmp; }
+JML_OP: MemAbsLongJmp    is op=0x5c; MemAbsLongJmp    { export MemAbsLongJmp; }
+JML_OP: MemAbsIndLongJmp is op=0xdc; MemAbsIndLongJmp { export MemAbsIndLongJmp; }
 
 # JML
-:JML JML_OP    is (op=0x5c | op=0xdc) ... & JML_OP
+:JML JML_OP is (op=0x5c | op=0xdc) ... & JML_OP
 {
     goto JML_OP;
 }

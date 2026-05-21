@@ -1,8 +1,14 @@
-# Absolute.
-MemAbsJmp: !$imm16    is imm16  {
-    local offset:2 = imm16;
-    local address:3 = (zext(PBR) << 16) | zext(offset);
-    export *:3 address;
+
+# JMP 0x4c - Absolute local.
+MemAbsJmp: !$target is imm16
+    [ target = (inst_start $and 0xff0000) $or imm16; ]
+{
+    export *:3 target;
+}
+
+# JML 0x5c - Absolute long.
+MemAbsLongJmp: !>$imm24 is imm24 {
+    export *:3 imm24;
 }
 
 # Absolute indexed by X, indirect.
@@ -45,11 +51,6 @@ MemAbsIndLongJmp: [!$imm16]    is imm16  {
     local addr_bank:1 = *:1 ind_bank_addr;
     local address:3 = (zext(addr_bank) << 16) | (zext(addr_hi) << 8) | zext(addr_lo);
     export *:3 address;
-}
-
-# Absolute long.
-MemAbsLongJmp: !>$imm24    is imm24  {
-    export *:3 imm24;
 }
 
 # PC relative.
