@@ -17,6 +17,13 @@ public final class SnesOptionsAction {
   private final PluginTool tool;
   private final Supplier<Program> currentProgramSupplier;
 
+  /**
+   * Registers the SNES Options action in the Tools menu and toolbar.
+   *
+   * @param tool active plugin tool used to install and show the action
+   * @param owner action owner id used by Ghidra's action framework
+   * @param currentProgramSupplier provider for the currently active program
+   */
   public SnesOptionsAction(PluginTool tool, String owner, Supplier<Program> currentProgramSupplier) {
     this.tool = tool;
     this.currentProgramSupplier = currentProgramSupplier;
@@ -31,6 +38,9 @@ public final class SnesOptionsAction {
       .buildAndInstall(tool);
   }
 
+  /**
+   * Opens the SNES options dialog bound to the current active program.
+   */
   private void showOptionsDialog() {
     DockingWindowManager.showDialog(tool.getToolFrame(), new SnesOptionsDialog(currentProgramSupplier.get()));
   }
