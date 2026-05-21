@@ -29,6 +29,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -379,6 +380,7 @@ class FunctionalTestRealDataTest {
 
   @Order(7)
   @DisplayName("Mirrors header title at $00:FFC0")
+  @Tag("harness")
   @ParameterizedTest(name = "[{index}] {0}")
   @MethodSource("realDataHeaderMirrorTitleCases")
   void mirrorsHeaderTitleAtBank00Ffc0(RealDataCase data) throws Exception {

@@ -55,10 +55,21 @@ dependencies {
   testRuntimeOnly 'org.junit.platform:junit-platform-launcher:6.0.3'
 }
 
+// Harness tests policy.
+//
+// Local runs: harness tests are excluded.
+// CI runs (CI=true): harness tests are enabled and use a temporary module
+// generated from local data/languages.
+def ciEnvironment = 'true'.equalsIgnoreCase(System.getenv('CI'))
+
 test {
   outputs.upToDateWhen { false }
 
-  useJUnitPlatform()
+  useJUnitPlatform {
+    if (!ciEnvironment) {
+      excludeTags 'harness'
+    }
+  }
   failFast = true
 
   testlogger {
@@ -183,16 +194,16 @@ tasks.register('prepareHarnessLanguages', Sync) {
 
 // Inject local language definitions into the Ghidra harness during tests.
 tasks.named('test', Test) {
-  dependsOn tasks.named('prepareHarnessLanguages')
+  if (ciEnvironment) {
+    dependsOn tasks.named('prepareHarnessLanguages')
+  }
 
   doFirst {
-    def externalModulesOverride = System.getProperty('ghidra.external.modules')
-    def externalModulesPath =
-      (externalModulesOverride != null && !externalModulesOverride.isBlank())
-        ? externalModulesOverride
-        : harnessModuleDir.get().asFile.absolutePath
+    if (!ciEnvironment) {
+      return
+    }
 
-    systemProperty 'ghidra.external.modules', externalModulesPath
+    systemProperty 'ghidra.external.modules', harnessModuleDir.get().asFile.absolutePath
   }
 }
 
