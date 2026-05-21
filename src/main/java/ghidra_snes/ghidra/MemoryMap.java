@@ -56,45 +56,44 @@ public class MemoryMap {
   }
 
   /**
-   * Creates mirrored SNES system region blocks across visible CPU banks.
+   * Creates mirrored SNES system region blocks for one visible CPU bank.
    *
-   * <p>The canonical regions remain mapped in bank 00 while all visible banks
-   * expose mapped mirrors pointing back to the canonical blocks.
+   * <p>The canonical regions remain mapped in bank 00 while visible banks expose
+   * mapped mirrors pointing back to the canonical blocks. Banks outside the SNES
+   * system mirror ranges are ignored.
    *
    * @param program the current program
-   * @param maxBank highest bank to expose
+   * @param bank bank to expose
    * @return number of blocks created
    */
-  public static int createBlockSystemRegionMirrors(Program program, int maxBank) throws Exception {
-    int created = 0;
-    int lastBank = Math.max(0x00, Math.min(maxBank, 0xbf));
-
-    for (int bank = 0x01; bank <= lastBank; bank++) {
-      if (!MemoryMapUtils.isSystemBank(bank)) {
-        continue;
-      }
-
-      for (SystemRegion memoryRegion : SYSTEM_REGIONS) {
-        long canonicalStart = memoryRegion.start();
-        long bankedStart = ((long) bank << 16) | (canonicalStart & 0xffff);
-        Address mappedAddress =
-            program.getAddressFactory().getDefaultAddressSpace().getAddress(canonicalStart);
-
-        created +=
-            MemoryMapUtils.ensureMappedBlock(
-                program,
-                "bank_%02x_%s_mirror".formatted(bank, memoryRegion.bankName()),
-                bankedStart,
-                mappedAddress,
-                memoryRegion.size(),
-                "SNES:Mirror",
-                "Mirror of %s at 0x%06x".formatted(memoryRegion.name(), bankedStart));
-      }
-      Mmio.createMmioLabels(program, bank);
+  public static int createBlockSystemRegionMirrors(Program program, int bank) throws Exception {
+    if (!MemoryMapUtils.isSystemBank(bank) || bank == 0x00) {
+      return 0;
     }
+
+    int created = 0;
+
+    for (SystemRegion memoryRegion : SYSTEM_REGIONS) {
+      long canonicalStart = memoryRegion.start();
+      long bankedStart = ((long) bank << 16) | (canonicalStart & 0xffff);
+      Address mappedAddress =
+          program.getAddressFactory().getDefaultAddressSpace().getAddress(canonicalStart);
+
+      created +=
+          MemoryMapUtils.ensureMappedBlock(
+              program,
+              "bank_%02x_%s_mirror".formatted(bank, memoryRegion.bankName()),
+              bankedStart,
+              mappedAddress,
+              memoryRegion.size(),
+              "SNES:Mirror",
+              "Mirror of %s at 0x%06x".formatted(memoryRegion.name(), bankedStart));
+    }
+    Mmio.createMmioLabels(program, bank);
 
     return created;
   }
+
 
   /**
    * Creates the main SNES WRAM memory block ($7E–$7F) if missing.
