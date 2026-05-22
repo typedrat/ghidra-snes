@@ -67,7 +67,10 @@ public class MemoryMap {
    * @return number of blocks created
    */
   public static int createBlockSystemRegionMirrors(Program program, int bank) throws Exception {
-    if (!MemoryMapUtils.isSystemBank(bank) || bank == 0x00) {
+    if (bank == 0x00) {
+      return createBlockSystemRegion(program);
+    }
+    if (!MemoryMapUtils.isSystemBank(bank)) {
       return 0;
     }
 
