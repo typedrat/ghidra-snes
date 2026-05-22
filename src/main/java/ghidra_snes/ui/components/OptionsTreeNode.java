@@ -1,5 +1,5 @@
 /* (C) Arnaud 'red' Rouyer 2026 */
-package ghidra_snes.ui.options;
+package ghidra_snes.ui.components;
 
 import docking.widgets.tree.GTreeLazyNode;
 import docking.widgets.tree.GTreeNode;
@@ -7,14 +7,14 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.swing.Icon;
 
-final class SnesOptionsTreeNode extends GTreeLazyNode {
+public final class OptionsTreeNode extends GTreeLazyNode {
   private final String name;
   private final String pageKey;
   private final boolean leaf;
   private final boolean collapsible;
   private final List<GTreeNode> children = new ArrayList<>();
 
-  private SnesOptionsTreeNode(String name, String pageKey, boolean leaf, boolean collapsible) {
+  private OptionsTreeNode(String name, String pageKey, boolean leaf, boolean collapsible) {
     this.name = name;
     this.pageKey = pageKey;
     this.leaf = leaf;
@@ -29,8 +29,8 @@ final class SnesOptionsTreeNode extends GTreeLazyNode {
    * @param collapsible whether this folder can stay collapsed
    * @return folder node
    */
-  static SnesOptionsTreeNode folder(String name, String pageKey, boolean collapsible) {
-    return new SnesOptionsTreeNode(name, pageKey, false, collapsible);
+  public static OptionsTreeNode folder(String name, String pageKey, boolean collapsible) {
+    return new OptionsTreeNode(name, pageKey, false, collapsible);
   }
 
   /**
@@ -40,8 +40,8 @@ final class SnesOptionsTreeNode extends GTreeLazyNode {
    * @param pageKey right-panel page key associated with this leaf
    * @return leaf node
    */
-  static SnesOptionsTreeNode leaf(String name, String pageKey) {
-    return new SnesOptionsTreeNode(name, pageKey, true, true);
+  public static OptionsTreeNode leaf(String name, String pageKey) {
+    return new OptionsTreeNode(name, pageKey, true, true);
   }
 
   /**
@@ -49,7 +49,7 @@ final class SnesOptionsTreeNode extends GTreeLazyNode {
    *
    * @param node child node to append
    */
-  void addChild(SnesOptionsTreeNode node) {
+  public void addChild(OptionsTreeNode node) {
     children.add(node);
   }
 
@@ -58,7 +58,7 @@ final class SnesOptionsTreeNode extends GTreeLazyNode {
    *
    * @return page key, or null when the node has no bound page
    */
-  String getPageKey() {
+  public String getPageKey() {
     return pageKey;
   }
 
@@ -67,7 +67,7 @@ final class SnesOptionsTreeNode extends GTreeLazyNode {
    *
    * @return true if collapsible, false when the UI should force it expanded
    */
-  boolean isCollapsible() {
+  public boolean isCollapsible() {
     return collapsible;
   }
 

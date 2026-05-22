@@ -1,5 +1,5 @@
 /* (C) Arnaud 'red' Rouyer 2026 */
-package ghidra_snes.ui.options.pages;
+package ghidra_snes.ui.components;
 
 import java.awt.BasicStroke;
 import java.awt.Color;

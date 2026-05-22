@@ -4,6 +4,7 @@ package ghidra_snes.ui.options;
 import docking.widgets.tree.GTree;
 import ghidra.program.model.listing.Program;
 import ghidra.util.Swing;
+import ghidra_snes.ui.components.OptionsTreeNode;
 import ghidra_snes.ui.options.pages.MemoryMapPage;
 import ghidra_snes.ui.options.pages.RomDetailsPage;
 import ghidra_snes.ui.options.pages.RomMirrorsPage;
@@ -64,15 +65,15 @@ public final class SnesOptionsComponent extends JPanel {
    * @return configured options tree
    */
   private GTree buildTree() {
-    SnesOptionsTreeNode rootNode = SnesOptionsTreeNode.folder("SNES Options", null, false);
-    SnesOptionsTreeNode romDetailsNode =
-      SnesOptionsTreeNode.leaf("ROM Details", ROM_DETAILS_PAGE);
-    SnesOptionsTreeNode memoryMapNode =
-      SnesOptionsTreeNode.folder("Memory Map", MEMORY_MAP_PAGE, false);
-    SnesOptionsTreeNode systemBanksNode =
-      SnesOptionsTreeNode.leaf("System Banks", SYSTEM_BANKS_PAGE);
-    SnesOptionsTreeNode romMirrorsNode =
-      SnesOptionsTreeNode.leaf("ROM Mirrors", ROM_MIRRORS_PAGE);
+    OptionsTreeNode rootNode = OptionsTreeNode.folder("SNES Options", null, false);
+    OptionsTreeNode romDetailsNode =
+      OptionsTreeNode.leaf("ROM Details", ROM_DETAILS_PAGE);
+    OptionsTreeNode memoryMapNode =
+      OptionsTreeNode.folder("Memory Map", MEMORY_MAP_PAGE, false);
+    OptionsTreeNode systemBanksNode =
+      OptionsTreeNode.leaf("System Banks", SYSTEM_BANKS_PAGE);
+    OptionsTreeNode romMirrorsNode =
+      OptionsTreeNode.leaf("ROM Mirrors", ROM_MIRRORS_PAGE);
 
     rootNode.addChild(romDetailsNode);
     rootNode.addChild(memoryMapNode);
@@ -107,7 +108,7 @@ public final class SnesOptionsComponent extends JPanel {
       @Override
       public void treeCollapsed(TreeExpansionEvent event) {
         Object node = event.getPath().getLastPathComponent();
-        if (!(node instanceof SnesOptionsTreeNode optionsNode)) {
+        if (!(node instanceof OptionsTreeNode optionsNode)) {
           return;
         }
         if (optionsNode.isCollapsible()) {
@@ -134,7 +135,7 @@ public final class SnesOptionsComponent extends JPanel {
     }
 
     Object selectedNode = selectionPath.getLastPathComponent();
-    if (!(selectedNode instanceof SnesOptionsTreeNode optionsNode)) {
+    if (!(selectedNode instanceof OptionsTreeNode optionsNode)) {
       pageLayout.show(pagePanel, ROM_DETAILS_PAGE);
       return;
     }

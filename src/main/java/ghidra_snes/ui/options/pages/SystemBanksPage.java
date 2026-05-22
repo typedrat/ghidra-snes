@@ -9,6 +9,7 @@ import ghidra.util.Msg;
 import ghidra.util.layout.VerticalLayout;
 import ghidra_snes.ghidra.MemoryMap;
 import ghidra_snes.ghidra.MemoryMapUtils;
+import ghidra_snes.ui.components.SystemBankRangeSlider;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Font;
@@ -23,6 +24,8 @@ public final class SystemBanksPage extends JPanel {
   private static final int BANK_MAX = 0xbf;
   private static final int FORBIDDEN_MIN = 0x40;
   private static final int FORBIDDEN_MAX = 0x7f;
+
+  private static final String PAGE_TITLE = "Generate System Bank Mirrors in Memory Map";
 
   private final Program currentProgram;
 
@@ -69,7 +72,7 @@ public final class SystemBanksPage extends JPanel {
   private JComponent buildHeaderSection() {
     JPanel section = new JPanel(new VerticalLayout(6));
 
-    GDLabel title = new GDLabel("Generate System Bank Mirrors");
+    GDLabel title = new GDLabel(PAGE_TITLE);
     title.setFont(title.getFont().deriveFont(Font.BOLD, 20f));
 
     MultiLineLabel notice = new MultiLineLabel(
@@ -170,7 +173,7 @@ public final class SystemBanksPage extends JPanel {
     if (selectedBanks.isEmpty()) {
       previewText = "No eligible mirror banks selected.";
     } else {
-      previewText = "This will create missing mirrors for: " + describeRanges(selectedBanks) + ".";
+      previewText = "This will create Memory Map mappings for: " + describeRanges(selectedBanks) + ".";
     }
 
     previewText += "\nBanks $40-$7F are always skipped.";
