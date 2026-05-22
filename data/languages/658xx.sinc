@@ -1487,7 +1487,7 @@ macro do_ror16(_out, _data) {
     pull8_native(pbr);
 
     # "Unlike the RTS instruction, the program counter address pulled off the stack is the exact
-    # address to return to... It does not need to be incremented as a subroutine’s return address
+    # address to return tot... It does not need to be incremented as a subroutine’s return address
     # does."
     local ret_addr:3 = (zext(pbr) << 16) | zext(pc);
     goto [ret_addr];

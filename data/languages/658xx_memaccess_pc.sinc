@@ -1,13 +1,13 @@
-
 # JMP 0x4c - Absolute local.
-MemAbsJmp: !$target is imm16
-    [ target = (inst_start $and 0xff0000) $or imm16; ]
+MemAbsJmp: !$jumpAddress is imm16
+    [ jumpAddress = (inst_start $and 0xff0000) $or imm16; ]
 {
-    export *:3 target;
+    export *:3 jumpAddress;
 }
 
 # JML 0x5c - Absolute long.
-MemAbsLongJmp: !>$imm24 is imm24 {
+MemAbsLongJmp: !>$imm24 is imm24
+{
     export *:3 imm24;
 }
 
