@@ -23,6 +23,8 @@ class BankRangeTest {
   @DisplayName("Rejects invalid bank and skip arguments")
   void rejectsInvalidArguments() {
     assertThrows(IllegalArgumentException.class, () -> new BankRange(-1, 0xbf, BankWindow.HIGH));
+    assertThrows(IllegalArgumentException.class, () -> new BankRange(0x100, 0xbf, BankWindow.HIGH));
+    assertThrows(IllegalArgumentException.class, () -> new BankRange(0x80, -1, BankWindow.HIGH));
     assertThrows(IllegalArgumentException.class, () -> new BankRange(0x80, 0x100, BankWindow.HIGH));
     assertThrows(IllegalArgumentException.class, () -> new BankRange(0x90, 0x8f, BankWindow.HIGH));
     assertThrows(IllegalArgumentException.class, () -> new BankRange(0x80, 0xbf, null));

@@ -4,6 +4,8 @@ package ghidra_snes.common;
 import static org.junit.jupiter.api.Assertions.*;
 
 import ghidra_snes.testing.RomMappingFactory;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.NoSuchElementException;
 import org.junit.jupiter.api.DisplayName;
@@ -107,5 +109,37 @@ class RomMapTypeTest {
     chunks.next();
     assertFalse(chunks.hasNext());
     assertThrows(NoSuchElementException.class, chunks::next);
+  }
+
+  @Test
+  @DisplayName("Internal mapping iterator rejects empty bank ranges")
+  void mappingIteratorRejectsEmptyBankRanges() throws Exception {
+    Class<?> iteratorClass =
+      Class.forName("ghidra_snes.common.RomMapType$RomMappingIterator");
+    Constructor<?> constructor = iteratorClass.getDeclaredConstructor(long.class, BankRange[].class);
+    constructor.setAccessible(true);
+
+    InvocationTargetException exception = assertThrows(
+      InvocationTargetException.class,
+      () -> constructor.newInstance(0L, (Object) new BankRange[0]));
+
+    assertInstanceOf(IllegalArgumentException.class, exception.getCause());
+    assertEquals("bankRanges cannot be empty", exception.getCause().getMessage());
+  }
+
+  @Test
+  @DisplayName("Internal mapping iterator rejects null bank ranges")
+  void mappingIteratorRejectsNullBankRanges() throws Exception {
+    Class<?> iteratorClass =
+      Class.forName("ghidra_snes.common.RomMapType$RomMappingIterator");
+    Constructor<?> constructor = iteratorClass.getDeclaredConstructor(long.class, BankRange[].class);
+    constructor.setAccessible(true);
+
+    InvocationTargetException exception = assertThrows(
+      InvocationTargetException.class,
+      () -> constructor.newInstance(0L, (Object) null));
+
+    assertInstanceOf(IllegalArgumentException.class, exception.getCause());
+    assertEquals("bankRanges cannot be empty", exception.getCause().getMessage());
   }
 }

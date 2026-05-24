@@ -51,6 +51,17 @@ class CartTypeTest {
   }
 
   @Test
+  @DisplayName("Known hardware with unknown coprocessor stays unknown overall")
+  void knownHardwareWithUnknownCoprocessorStaysUnknownOverall() {
+    CartType cartType = CartType.fromBytes(0xf3, 0xff);
+
+    assertEquals(HardwareFeatures.ROM_COPRO, cartType.hardwareFeatures());
+    assertEquals(CoprocessorType.UNKNOWN, cartType.coprocessorType());
+    assertTrue(cartType.hasCoprocessor());
+    assertFalse(cartType.isKnown());
+  }
+
+  @Test
   @DisplayName("Signed Java bytes are decoded as unsigned header bytes")
   void signedJavaBytesAreDecodedAsUnsignedHeaderBytes() {
     CartType cartType = CartType.fromBytes((byte) 0xf5, (byte) 0x03);

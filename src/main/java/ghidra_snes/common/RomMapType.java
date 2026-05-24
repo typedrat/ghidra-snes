@@ -69,10 +69,14 @@ public enum RomMapType {
     private long fileOffset;
 
     private RomMappingIterator(long romSize, BankRange... bankRanges) {
+      if (bankRanges == null || bankRanges.length == 0) {
+        throw new IllegalArgumentException("bankRanges cannot be empty");
+      }
+
       this.romSize = Math.max(0, romSize);
       this.bankRanges = bankRanges;
       this.rangeIndex = 0;
-      this.bank = bankRanges.length == 0 ? 0x100 : bankRanges[0].startBank();
+      this.bank = bankRanges[0].startBank();
       this.fileOffset = 0;
     }
 
