@@ -13,27 +13,6 @@ package ghidra_snes.common;
  * @param fileSkip bytes skipped before each chunk read from ROM file
  */
 public record BankRange(int startBank, int endBank, BankWindow window, int fileSkip) {
-  /**
-   * Validates and constructs a canonical bank mapping range.
-   */
-  public BankRange {
-    if (startBank < 0x00 || startBank > 0xff) {
-      throw new IllegalArgumentException("startBank out of range: " + startBank);
-    }
-    if (endBank < 0x00 || endBank > 0xff) {
-      throw new IllegalArgumentException("endBank out of range: " + endBank);
-    }
-    if (startBank > endBank) {
-      throw new IllegalArgumentException("startBank must be <= endBank");
-    }
-    if (window == null) {
-      throw new IllegalArgumentException("window cannot be null");
-    }
-    if (fileSkip < 0) {
-      throw new IllegalArgumentException("fileSkip must be >= 0");
-    }
-  }
-
   public BankRange(int startBank, int endBank, BankWindow window) {
     this(startBank, endBank, window, 0);
   }
