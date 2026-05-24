@@ -1,0 +1,55 @@
+/* (C) Arnaud 'red' Rouyer 2026 */
+package ghidra_snes.common;
+
+/**
+ * Canonical ROM mapping definition for a contiguous bank range.
+ *
+ * @param startBank first bank index (inclusive)
+ * @param endBank last bank index (inclusive)
+ * @param window bank-local address window (FULL/LOW/HIGH)
+ * @param fileSkip bytes skipped before each chunk read from ROM file
+ */
+public record BankRange(int startBank, int endBank, BankWindow window, int fileSkip) {
+  public BankRange {
+    if (startBank < 0x00 || startBank > 0xff) {
+      throw new IllegalArgumentException("startBank out of range: " + startBank);
+    }
+    if (endBank < 0x00 || endBank > 0xff) {
+      throw new IllegalArgumentException("endBank out of range: " + endBank);
+    }
+    if (startBank > endBank) {
+      throw new IllegalArgumentException("startBank must be <= endBank");
+    }
+    if (window == null) {
+      throw new IllegalArgumentException("window cannot be null");
+    }
+    if (fileSkip < 0) {
+      throw new IllegalArgumentException("fileSkip must be >= 0");
+    }
+  }
+
+  public BankRange(int startBank, int endBank, BankWindow window) {
+    this(startBank, endBank, window, 0);
+  }
+
+  /**
+   * Returns the number of banks in this range.
+   */
+  public int bankCount() {
+    return (endBank - startBank) + 1;
+  }
+
+  /**
+   * Returns mapped bytes per bank for this range.
+   */
+  public int chunkSize() {
+    return window.size();
+  }
+
+  /**
+   * Returns the inclusive end address for the mapped window in each bank.
+   */
+  public int addressEndInclusive() {
+    return window.endAddressInclusive();
+  }
+}
