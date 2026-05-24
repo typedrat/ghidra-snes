@@ -4,12 +4,18 @@ package ghidra_snes.common;
 /**
  * Canonical ROM mapping definition for a contiguous bank range.
  *
+ * <p>A {@link RomMapType} typically combines one or more of these ranges to
+ * describe where canonical ROM data is visible in CPU address space.
+ *
  * @param startBank first bank index (inclusive)
  * @param endBank last bank index (inclusive)
  * @param window bank-local address window (FULL/LOW/HIGH)
  * @param fileSkip bytes skipped before each chunk read from ROM file
  */
 public record BankRange(int startBank, int endBank, BankWindow window, int fileSkip) {
+  /**
+   * Validates and constructs a canonical bank mapping range.
+   */
   public BankRange {
     if (startBank < 0x00 || startBank > 0xff) {
       throw new IllegalArgumentException("startBank out of range: " + startBank);

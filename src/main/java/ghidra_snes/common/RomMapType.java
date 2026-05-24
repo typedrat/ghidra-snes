@@ -16,6 +16,10 @@ public enum RomMapType {
 
   /**
    * Returns canonical bank ranges for this ROM mapping type.
+   *
+   * <p>The returned ranges are declarative and static for each map type.
+   * Runtime availability checks (existing blocks, reserved windows, etc.)
+   * should be layered on top of this metadata.
    */
   public List<BankRange> ranges() {
     return switch (this) {
@@ -36,12 +40,24 @@ public enum RomMapType {
 
   /**
    * Iterates canonical ROM chunks mapped from the input ROM file.
+   *
+   * <p>The iterator walks {@link #ranges()} in order, consuming ROM bytes
+   * until either the ROM data is exhausted or the configured bank windows
+   * are fully populated.
    */
   public Iterable<MappingChunk> mappingChunks(long romSize) {
     BankRange[] mappingRanges = ranges().toArray(BankRange[]::new);
     return () -> new RomMappingIterator(romSize, mappingRanges);
   }
 
+  /**
+   * One concrete mapping operation derived from {@link BankRange} metadata.
+   *
+   * @param bank destination SNES bank
+   * @param fileOffset source ROM file offset (after copier-header adjustment)
+   * @param cpuAddress destination CPU-visible address (24-bit, flattened)
+   * @param requestedSize requested mapped size in bytes
+   */
   public record MappingChunk(int bank, long fileOffset, long cpuAddress, long requestedSize) {}
 
   private static final class RomMappingIterator implements Iterator<MappingChunk> {
