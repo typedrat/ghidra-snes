@@ -56,7 +56,7 @@ public final class SnesOptionsComponent extends JPanel {
     pagePanel.add(new RomDetailsPage(currentProgram), ROM_DETAILS_PAGE);
     pagePanel.add(new MemoryMapPage(), MEMORY_MAP_PAGE);
     pagePanel.add(new SystemBanksPage(currentProgram), SYSTEM_BANKS_PAGE);
-    pagePanel.add(new RomMirrorsPage(), ROM_MIRRORS_PAGE);
+    pagePanel.add(new RomMirrorsPage(currentProgram), ROM_MIRRORS_PAGE);
   }
 
   /**

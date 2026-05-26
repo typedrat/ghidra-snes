@@ -3,8 +3,11 @@ package ghidra_snes.ghidra;
 
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
+import ghidra_snes.common.BankRange;
+import ghidra_snes.common.BankWindow;
 import ghidra_snes.common.RomMapType;
 import ghidra_snes.common.SnesRomHeader;
+import ghidra_snes.common.cart.RomMirrorPolicy;
 import ghidra_snes.common.registers.Mmio;
 import java.util.List;
 
@@ -160,6 +163,41 @@ public class MemoryMap {
   }
 
   /**
+   * Creates ROM mirror mapped blocks for one source/target selection.
+   *
+   * <p>Each created target bank maps to a canonical ROM source bank with the
+   * same in-window offset. Existing/conflicting blocks are skipped.
+   *
+   * @param program active program receiving mapped blocks
+   * @param sourceRange selected canonical source range and window
+   * @param targetRange selected target range and window
+   * @return number of mapped blocks created
+   */
+  public static int createBlockRomMirrors(
+      Program program, BankRange sourceRange, BankRange targetRange) throws Exception {
+    int created = 0;
+    String windowSuffix = mirrorWindowSuffix(targetRange.window());
+
+    for (RomMirrorPolicy.MirrorMapping mapping : RomMirrorPolicy.buildPlan(sourceRange, targetRange)) {
+      Address mappedAddress =
+          program.getAddressFactory().getDefaultAddressSpace().getAddress(mapping.sourceStart());
+
+      created +=
+          MemoryMapUtils.ensureMappedBlock(
+              program,
+              "bank_%02x_rom_%s_mirror".formatted(mapping.targetBank(), windowSuffix),
+              mapping.targetStart(),
+              mappedAddress,
+              mapping.size(),
+              "SNES:Mirror",
+              "ROM mirror of 0x%06x at 0x%06x"
+                  .formatted(mapping.sourceStart(), mapping.targetStart()));
+    }
+
+    return created;
+  }
+
+  /**
    * Resolves the canonical ROM source address for a high-half mirror bank.
    *
    * <p>This converts a CPU-visible {@code 8000-FFFF} ROM mirror bank into the
@@ -223,5 +261,13 @@ public class MemoryMap {
     }
 
     return romHeader.location() - (SnesRomHeader.LOROM_HEADER_OFFSET - 1);
+  }
+
+  private static String mirrorWindowSuffix(BankWindow window) {
+    return switch (window) {
+      case LOW -> "low";
+      case HIGH -> "high";
+      case FULL -> "full";
+    };
   }
 }

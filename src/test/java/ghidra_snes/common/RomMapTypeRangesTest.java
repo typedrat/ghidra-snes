@@ -13,7 +13,7 @@ class RomMapTypeRangesTest {
   @DisplayName("LoROM exposes one canonical high-half range")
   void loRomRanges() {
     assertEquals(
-      List.of(new BankRange(0x80, 0xff, BankWindow.HIGH)),
+      List.of(new BankRange(0x80, 0xbf, BankWindow.HIGH)),
       RomMapType.LoROM.ranges());
   }
 
