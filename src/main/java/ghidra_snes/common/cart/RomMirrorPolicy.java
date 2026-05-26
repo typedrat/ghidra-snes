@@ -110,6 +110,9 @@ public final class RomMirrorPolicy {
 
   /**
    * Returns allowed targets for one explicit source selection.
+   *
+   * <p>The source match uses full {@link BankRange} equality (including
+   * {@code fileSkip}), plus the selected {@link BankWindow}.
    */
   public static List<BankRange> targetsFor(
       RomMapType romMapType, BankRange canonicalSource, BankWindow sourceWindow) {

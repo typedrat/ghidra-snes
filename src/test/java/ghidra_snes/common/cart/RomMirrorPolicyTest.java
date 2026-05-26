@@ -12,6 +12,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 class RomMirrorPolicyTest {
+  private static final List<BankRange> HALF_TARGETS =
+      List.of(
+          new BankRange(0x00, 0x3f, BankWindow.HIGH),
+          new BankRange(0x40, 0x7d, BankWindow.LOW),
+          new BankRange(0x40, 0x7d, BankWindow.HIGH),
+          new BankRange(0xc0, 0xff, BankWindow.LOW),
+          new BankRange(0xc0, 0xff, BankWindow.HIGH));
+
   @Test
   @DisplayName("Reserved targets are fixed low system windows")
   void reservedTargetsAreFixedLowSystemWindows() {
@@ -59,9 +67,39 @@ class RomMirrorPolicyTest {
   @Test
   @DisplayName("ExHiROM exposes expected number of explicit rules")
   void exHiRomExposesExpectedNumberOfRules() {
-    assertEquals(7, RomMirrorPolicy.rulesFor(RomMapType.ExHiROM).size());
-    assertEquals(7, RomMirrorPolicy.rulesFor(RomMapType.SPC7110).size());
-    assertEquals(7, RomMirrorPolicy.rulesFor(RomMapType.S_DD1).size());
+    List<RomMirrorPolicy.Rule> exHiRomRules = RomMirrorPolicy.rulesFor(RomMapType.ExHiROM);
+    List<RomMirrorPolicy.Rule> spc7110Rules = RomMirrorPolicy.rulesFor(RomMapType.SPC7110);
+    List<RomMirrorPolicy.Rule> sdd1Rules = RomMirrorPolicy.rulesFor(RomMapType.S_DD1);
+
+    assertEquals(7, exHiRomRules.size());
+    assertEquals(7, spc7110Rules.size());
+    assertEquals(7, sdd1Rules.size());
+
+    assertEquals(new BankRange(0xc0, 0xff, BankWindow.FULL), exHiRomRules.get(0).canonicalSource());
+    assertEquals(BankWindow.FULL, exHiRomRules.get(0).sourceWindow());
+    assertEquals(new BankRange(0x3e, 0x3f, BankWindow.HIGH, 0x8000), exHiRomRules.get(6).canonicalSource());
+    assertEquals(BankWindow.HIGH, exHiRomRules.get(6).sourceWindow());
+    assertEquals(HALF_TARGETS, exHiRomRules.get(6).allowedTargets());
+  }
+
+  @Test
+  @DisplayName("SA-1 exposes the same source windows as HiROM")
+  void sa1MatchesHiRomRules() {
+    List<RomMirrorPolicy.Rule> hiRomRules = RomMirrorPolicy.rulesFor(RomMapType.HiROM);
+    List<RomMirrorPolicy.Rule> sa1Rules = RomMirrorPolicy.rulesFor(RomMapType.SA_1);
+
+    assertEquals(hiRomRules, sa1Rules);
+  }
+
+  @Test
+  @DisplayName("targetsFor resolves ExHiROM $3E-$3F high-half source")
+  void targetsForResolvesExHiRomHighHalfSource() {
+    assertEquals(
+        HALF_TARGETS,
+        RomMirrorPolicy.targetsFor(
+            RomMapType.ExHiROM,
+            new BankRange(0x3e, 0x3f, BankWindow.HIGH, 0x8000),
+            BankWindow.HIGH));
   }
 
   @Test
