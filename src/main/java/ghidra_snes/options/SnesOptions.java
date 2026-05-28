@@ -187,4 +187,18 @@ public final class SnesOptions {
   public static String getMetadataSource(Program program) {
     return getString(program, OPT_METADATA_SOURCE, DEFAULT_METADATA_SOURCE);
   }
+
+  /**
+   * Returns true when this program contains persisted SNES cartridge metadata.
+   *
+   * @param program target Ghidra program
+   * @return true for programs imported through the SNES loader
+   */
+  public static boolean isSnesProgram(Program program) {
+    if (program == null) {
+      return false;
+    }
+
+    return !SnesCartridge.MetadataSource.UNKNOWN.name().equals(getMetadataSource(program));
+  }
 }
