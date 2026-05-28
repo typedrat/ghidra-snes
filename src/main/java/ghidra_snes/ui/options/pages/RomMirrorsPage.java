@@ -32,6 +32,9 @@ import javax.swing.JPanel;
  * Interactive UI for creating ROM mirror views from canonical SNES ROM ranges.
  */
 public final class RomMirrorsPage extends JPanel {
+  private static final long LOROM_BANK_CHUNK_SIZE = 0x8000L;
+  private static final int LOROM_PRIMARY_SOURCE_BANK_COUNT = 64;
+
   private final Program currentProgram;
   private final RomMapType romMapType;
   private final List<RomMirrorPolicy.Rule> availableRules;
@@ -65,7 +68,7 @@ public final class RomMirrorsPage extends JPanel {
     super(new BorderLayout());
     this.currentProgram = currentProgram;
     this.romMapType = resolveRomMapType(currentProgram);
-    this.availableRules = resolveRules(romMapType);
+    this.availableRules = resolveRules(currentProgram, romMapType);
 
     indexRulesByCanonicalSource();
     setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
@@ -809,12 +812,49 @@ public final class RomMirrorsPage extends JPanel {
     }
   }
 
-  private static List<RomMirrorPolicy.Rule> resolveRules(RomMapType romMapType) {
+  /**
+   * Resolves mirror rules for the current program and mapper.
+   *
+   * <p>LoROM exposes one canonical source for <=64 high-half banks ($80-$BF).
+   * When ROM size exceeds 64 banks, a second source ($C0-$FF) is exposed.
+   */
+  private static List<RomMirrorPolicy.Rule> resolveRules(Program currentProgram, RomMapType romMapType) {
     if (romMapType == RomMapType.UNKNOWN) {
       return List.of();
     }
 
-    return RomMirrorPolicy.rulesFor(romMapType);
+    List<RomMirrorPolicy.Rule> baseRules = RomMirrorPolicy.rulesFor(romMapType);
+    if (romMapType != RomMapType.LoROM || currentProgram == null) {
+      return baseRules;
+    }
+
+    long romSizeBytes = Math.max(0L, SnesOptions.getRomSizeBytes(currentProgram));
+    long loromBankCount = Math.ceilDiv(romSizeBytes, LOROM_BANK_CHUNK_SIZE);
+    if (loromBankCount <= LOROM_PRIMARY_SOURCE_BANK_COUNT) {
+      return baseRules;
+    }
+
+    boolean alreadyHasUpperSource =
+        baseRules.stream()
+            .anyMatch(
+                rule ->
+                    rule.canonicalSource().startBank() == 0xc0
+                        && rule.canonicalSource().endBank() == 0xff
+                        && rule.sourceWindow() == BankWindow.HIGH);
+    if (alreadyHasUpperSource) {
+      return baseRules;
+    }
+
+    List<RomMirrorPolicy.Rule> rules = new ArrayList<>(baseRules);
+    for (RomMirrorPolicy.Rule rule : baseRules) {
+      BankRange source = rule.canonicalSource();
+      if (source.startBank() == 0x80 && source.endBank() == 0xbf && rule.sourceWindow() == BankWindow.HIGH) {
+        BankRange upperHalfSource = new BankRange(0xc0, 0xff, BankWindow.HIGH, source.fileSkip());
+        rules.add(new RomMirrorPolicy.Rule(upperHalfSource, rule.sourceWindow(), rule.allowedTargets()));
+      }
+    }
+
+    return rules;
   }
 
   private static void appendPreviewRow(
