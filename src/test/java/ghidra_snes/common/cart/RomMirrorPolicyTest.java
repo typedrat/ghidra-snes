@@ -36,7 +36,7 @@ class RomMirrorPolicyTest {
     List<RomMirrorPolicy.Rule> rules = RomMirrorPolicy.rulesFor(RomMapType.LoROM);
 
     assertEquals(1, rules.size());
-    assertEquals(new BankRange(0x80, 0xbf, BankWindow.HIGH), rules.get(0).canonicalSource());
+    assertEquals(new BankRange(0x80, 0xff, BankWindow.HIGH), rules.get(0).canonicalSource());
     assertEquals(BankWindow.HIGH, rules.get(0).sourceWindow());
     assertEquals(
         List.of(

@@ -24,7 +24,7 @@ public enum RomMapType {
   public List<BankRange> ranges() {
     return switch (this) {
       case LoROM -> List.of(
-        new BankRange(0x80, 0xbf, BankWindow.HIGH)
+        new BankRange(0x80, 0xff, BankWindow.HIGH)
       );
       case HiROM, SA_1 -> List.of(
         new BankRange(0xc0, 0xff, BankWindow.FULL)
