@@ -4,6 +4,8 @@ package ghidra_snes;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import ghidra.app.util.bin.ByteArrayProvider;
 import ghidra.app.util.opinion.LoadResults;
@@ -30,6 +32,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -408,5 +411,41 @@ class FunctionalTestRealDataTest {
     }
 
     assertArrayEquals(header.titleBytes(), mirroredTitle);
+  }
+
+  @Order(8)
+  @DisplayName("Maps low-bank ROM mirrors only for banks backed by real ROM")
+  @Tag("harness")
+  @Test
+  void mapsLowBankRomMirrorsOnlyForBackedBanks() throws Exception {
+    Path sample = REAL_DATA_DIR.resolve("smashing_the_stack.sfc");
+    Assumptions.assumeTrue(Files.exists(sample), () -> "Missing real data: smashing_the_stack.sfc");
+
+    // smashing_the_stack.sfc is a 2-bank LoROM ($80,$81), so the low-bank
+    // high-half mirrors should exist for $00 and $01 but stop there.
+    byte[] romData = Files.readAllBytes(sample);
+    try (LoadResults<Program> loadResults = ProgramFactory.loadSnesRom("smashing_the_stack", romData)) {
+      loadResults.getPrimary().apply(program -> {
+        var space = program.getAddressFactory().getDefaultAddressSpace();
+        var memory = program.getMemory();
+
+        assertNotNull(
+            memory.getBlock(space.getAddress(0x018000L)),
+            "expected low-bank mirror for backed bank $01:8000");
+        assertNull(
+            memory.getBlock(space.getAddress(0x028000L)),
+            "did not expect a mirror for unbacked bank $02:8000");
+
+        byte[] viaMirror = new byte[32];
+        byte[] viaCanonical = new byte[32];
+        try {
+          memory.getBytes(space.getAddress(0x018000L), viaMirror);
+          memory.getBytes(space.getAddress(0x818000L), viaCanonical);
+        } catch (MemoryAccessException e) {
+          throw new AssertionError("Cannot read low-bank mirror at $01:8000", e);
+        }
+        assertArrayEquals(viaCanonical, viaMirror);
+      });
+    }
   }
 }
