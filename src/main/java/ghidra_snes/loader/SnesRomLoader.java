@@ -153,7 +153,11 @@ public class SnesRomLoader extends AbstractProgramLoader {
     try {
       MemoryMap.createBlockSystemRegion(program);
       MemoryMap.createBlockWram(program);
-      MemoryMap.createBlockHighHalfRomMirrors(program, romType, cartridge.getRomHeader(), 0x00);
+      // Expose the CPU-visible low-bank high-half ROM mirrors ($00-$3F:8000-FFFF)
+      // so cross-bank long addressing into the low banks (e.g. LoROM JSL $09:xxxx)
+      // resolves to real ROM bytes during analysis. Banks whose canonical source
+      // is not backed by mapped ROM are skipped inside createBlockHighHalfRomMirrors.
+      MemoryMap.createBlockHighHalfRomMirrors(program, romType, cartridge.getRomHeader(), 0x3f);
       Vectors.createVectorLabels(program);
 
       SnesOptions.initializeFromCartridge(program, cartridge);

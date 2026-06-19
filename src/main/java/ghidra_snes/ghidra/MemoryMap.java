@@ -3,6 +3,7 @@ package ghidra_snes.ghidra;
 
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
+import ghidra.program.model.mem.MemoryBlock;
 import ghidra_snes.common.BankRange;
 import ghidra_snes.common.BankWindow;
 import ghidra_snes.common.RomMapType;
@@ -147,6 +148,14 @@ public class MemoryMap {
       long mirrorStart = ((long) bank << 16) | 0x8000L;
       Address mappedAddress =
           program.getAddressFactory().getDefaultAddressSpace().getAddress(canonicalStart);
+
+      // Only mirror banks whose canonical ROM source is actually backed by an
+      // initialized block; otherwise we would create a byte-mapped block pointing
+      // at unmapped memory (e.g. low-bank mirrors past the end of a small ROM).
+      MemoryBlock canonicalBlock = program.getMemory().getBlock(mappedAddress);
+      if (canonicalBlock == null || !canonicalBlock.isInitialized()) {
+        continue;
+      }
 
       created +=
           MemoryMapUtils.ensureMappedBlock(
