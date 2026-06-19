@@ -824,27 +824,39 @@ macro jsr_calculate_push_addr(_out) {
 }
 
 # LDA 8 bit.
-:LDA PRIMARY_OP    is (ctx_MF=1 &
-    (op=0xa9 | op=0xad | op=0xaf | op=0xa5 | op=0xb2 | op=0xa7 | op=0xbd |
-     op=0xbf | op=0xb9 | op=0xb5 | op=0xa1 | op=0xb1 | op=0xb7 | op=0xa3 |
-     op=0xb3)) ... & PRIMARY_OP
-{
-    local data:1; deref_read8(data, PRIMARY_OP);
-
-    A = data;
+macro do_lda8(_data) {
+    A = _data;
     flag8_NZ(A);
+}
+:LDA PRIMARY_OP_NO_IMM    is (ctx_MF=1 &
+    (op=0xad | op=0xaf | op=0xa5 | op=0xb2 | op=0xa7 | op=0xbd |
+     op=0xbf | op=0xb9 | op=0xb5 | op=0xa1 | op=0xb1 | op=0xb7 | op=0xa3 |
+     op=0xb3)) ... & PRIMARY_OP_NO_IMM
+{
+    local data:1; deref_read8(data, PRIMARY_OP_NO_IMM);
+    do_lda8(data);
+}
+:LDA ImmVal8    is ctx_MF=1 & op=0xa9 ; ImmVal8
+{
+    do_lda8(ImmVal8);
 }
 
 # LDA 16 bit.
-:LDA PRIMARY_OP    is (ctx_MF=0 &
-    (op=0xa9 | op=0xad | op=0xaf | op=0xa5 | op=0xb2 | op=0xa7 | op=0xbd |
-     op=0xbf | op=0xb9 | op=0xb5 | op=0xa1 | op=0xb1 | op=0xb7 | op=0xa3 |
-     op=0xb3)) ... & PRIMARY_OP
-{
-    local data:2; deref_read16(data, PRIMARY_OP);
-
-    C = data;
+macro do_lda16(_data) {
+    C = _data;
     flag16_NZ(C);
+}
+:LDA PRIMARY_OP_NO_IMM    is (ctx_MF=0 &
+    (op=0xad | op=0xaf | op=0xa5 | op=0xb2 | op=0xa7 | op=0xbd |
+     op=0xbf | op=0xb9 | op=0xb5 | op=0xa1 | op=0xb1 | op=0xb7 | op=0xa3 |
+     op=0xb3)) ... & PRIMARY_OP_NO_IMM
+{
+    local data:2; deref_read16(data, PRIMARY_OP_NO_IMM);
+    do_lda16(data);
+}
+:LDA ImmVal16    is ctx_MF=0 & op=0xa9 ; ImmVal16
+{
+    do_lda16(ImmVal16);
 }
 
 LDX_OP: SEC_OP_Y    is (aaa=5) ... & SEC_OP_Y  { export SEC_OP_Y; }

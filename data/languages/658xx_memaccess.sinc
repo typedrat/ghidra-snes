@@ -575,6 +575,28 @@ RefImmXF: RefImm16    is ctx_XF=0; RefImm16  {
     export RefImm16;
 }
 
+# Immediate value operands.
+#
+# Unlike the Ref* immediate constructors above (which export a 6 byte packed
+# *reference* to the operand bytes in the instruction stream, intended to be
+# dereferenced via deref_read*), these export the operand bytes directly as a
+# literal constant value. This lets the decompiler treat "#imm" operands as
+# constants instead of memory reads from the bus space, enabling constant
+# propagation.
+#
+# The display is identical to the Ref* immediate constructors ("#$imm").
+#
+# ImmVal8/ImmVal16 are matched directly by the immediate instruction
+# constructors (which already split on ctx_MF/ctx_XF for width), so there is no
+# combined width-selecting subtable here: a single subtable with two different
+# export sizes is rejected by the compiler ("inconsistent export size").
+ImmVal8: #$imm8    is imm8  {
+    export *[const]:1 imm8;
+}
+ImmVal16: #$imm16    is imm16  {
+    export *[const]:2 imm16;
+}
+
 # Stack relative.
 RefSR: $imm8,"S"    is imm8  {
     local imm:1 = imm8;
