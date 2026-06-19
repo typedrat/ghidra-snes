@@ -159,6 +159,12 @@ public class SnesRomLoader extends AbstractProgramLoader {
       // is not backed by mapped ROM are skipped inside createBlockHighHalfRomMirrors.
       MemoryMap.createBlockHighHalfRomMirrors(program, romType, cartridge.getRomHeader(), 0x3f);
       Vectors.createVectorLabels(program);
+      // Seed reset/NMI/IRQ (and other used) vector handlers as entry points so
+      // auto-analysis disassembles them without a manual kick. The pspec cannot
+      // declare these statically (PC is 3 bytes, vectors are 2), so the loader
+      // must register them.
+      Vectors.createVectorEntryPoints(
+          program, MemoryMap.canonicalRomBankBase(romType, cartridge.getRomHeader()));
 
       SnesOptions.initializeFromCartridge(program, cartridge);
     } catch (Exception e) {

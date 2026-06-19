@@ -272,6 +272,18 @@ public class MemoryMap {
     return romHeader.location() - (SnesRomHeader.LOROM_HEADER_OFFSET - 1);
   }
 
+  /**
+   * Returns the canonical ROM bank base that backs CPU bank {@code $00}.
+   *
+   * <p>This is the 24-bit bank-aligned address (e.g. {@code 0x800000} for LoROM,
+   * {@code 0xc00000} for HiROM) whose high half mirrors bank {@code $00}. It lets
+   * callers translate a bank-$00 16-bit pointer (such as a CPU vector target)
+   * into the canonical, initialized ROM address that holds those bytes.
+   */
+  public static long canonicalRomBankBase(RomMapType romMapType, SnesRomHeader romHeader) {
+    return firstBankMirrorStart(romMapType, romHeader) & 0xff0000L;
+  }
+
   private static String mirrorWindowSuffix(BankWindow window) {
     return switch (window) {
       case LOW -> "low";

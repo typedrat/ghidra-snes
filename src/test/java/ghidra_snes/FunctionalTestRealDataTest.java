@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import ghidra.app.util.bin.ByteArrayProvider;
 import ghidra.app.util.opinion.LoadResults;
@@ -445,6 +446,28 @@ class FunctionalTestRealDataTest {
           throw new AssertionError("Cannot read low-bank mirror at $01:8000", e);
         }
         assertArrayEquals(viaCanonical, viaMirror);
+      });
+    }
+  }
+
+  @Order(9)
+  @DisplayName("Registers CPU vector handlers as program entry points")
+  @Tag("harness")
+  @Test
+  void registersVectorHandlersAsEntryPoints() throws Exception {
+    Path sample = REAL_DATA_DIR.resolve("smashing_the_stack.sfc");
+    Assumptions.assumeTrue(Files.exists(sample), () -> "Missing real data: smashing_the_stack.sfc");
+
+    byte[] romData = Files.readAllBytes(sample);
+    try (LoadResults<Program> loadResults = ProgramFactory.loadSnesRom("smashing_the_stack", romData)) {
+      loadResults.getPrimary().apply(program -> {
+        var symbols = program.getSymbolTable();
+        assertTrue(
+            symbols.getExternalEntryPointIterator().hasNext(),
+            "expected at least one CPU vector to be registered as an entry point");
+        assertTrue(
+            symbols.getGlobalSymbols("Reset").size() > 0,
+            "expected a Reset handler label at the reset vector target");
       });
     }
   }
