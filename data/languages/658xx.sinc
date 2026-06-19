@@ -249,27 +249,39 @@ SHIFT_OP: SEC_OP_X    is SEC_OP_X  { export SEC_OP_X; }
 }
 
 # AND 8 bit.
-:AND PRIMARY_OP    is (ctx_MF=1 &
-    (op=0x29 | op=0x2d | op=0x2f | op=0x25 | op=0x32 | op=0x27 | op=0x3d |
-     op=0x3f | op=0x39 | op=0x35 | op=0x21 | op=0x31 | op=0x37 | op=0x23 |
-     op=0x33)) ... & PRIMARY_OP
-{
-    local data:1; deref_read8(data, PRIMARY_OP);
-
-    A = A & data;
+macro do_and8(_data) {
+    A = A & _data;
     flag8_NZ(A);
+}
+:AND PRIMARY_OP_NO_IMM    is (ctx_MF=1 &
+    (op=0x2d | op=0x2f | op=0x25 | op=0x32 | op=0x27 | op=0x3d |
+     op=0x3f | op=0x39 | op=0x35 | op=0x21 | op=0x31 | op=0x37 | op=0x23 |
+     op=0x33)) ... & PRIMARY_OP_NO_IMM
+{
+    local data:1; deref_read8(data, PRIMARY_OP_NO_IMM);
+    do_and8(data);
+}
+:AND ImmVal8    is ctx_MF=1 & op=0x29 ; ImmVal8
+{
+    do_and8(ImmVal8);
 }
 
 # AND 16 bit.
-:AND PRIMARY_OP    is (ctx_MF=0 &
-    (op=0x29 | op=0x2d | op=0x2f | op=0x25 | op=0x32 | op=0x27 | op=0x3d |
-     op=0x3f | op=0x39 | op=0x35 | op=0x21 | op=0x31 | op=0x37 | op=0x23 |
-     op=0x33)) ... & PRIMARY_OP
-{
-    local data:2; deref_read16(data, PRIMARY_OP);
-
-    C = C & data;
+macro do_and16(_data) {
+    C = C & _data;
     flag16_NZ(C);
+}
+:AND PRIMARY_OP_NO_IMM    is (ctx_MF=0 &
+    (op=0x2d | op=0x2f | op=0x25 | op=0x32 | op=0x27 | op=0x3d |
+     op=0x3f | op=0x39 | op=0x35 | op=0x21 | op=0x31 | op=0x37 | op=0x23 |
+     op=0x33)) ... & PRIMARY_OP_NO_IMM
+{
+    local data:2; deref_read16(data, PRIMARY_OP_NO_IMM);
+    do_and16(data);
+}
+:AND ImmVal16    is ctx_MF=0 & op=0x29 ; ImmVal16
+{
+    do_and16(ImmVal16);
 }
 
 # ASL 8 bit.
@@ -461,31 +473,43 @@ BIT_OP: RefImmMF    is op=0x89; RefImmMF  { export RefImmMF; }
 }
 
 # CMP 8 bit.
-:CMP PRIMARY_OP    is (ctx_MF=1 &
-    (op=0xc9 | op=0xcd | op=0xcf | op=0xc5 | op=0xd2 | op=0xc7 | op=0xdd |
-     op=0xdf | op=0xd9 | op=0xd5 | op=0xc1 | op=0xd1 | op=0xd7 | op=0xc3 |
-     op=0xd3)) ... & PRIMARY_OP
-{
-    local data:1; deref_read8(data, PRIMARY_OP);
+macro do_cmp8(_data) {
     local result:4;
-
-    result = sext(A) - sext(data);
+    result = sext(A) - sext(_data);
     flag8_NZ(result:1);
     CF = result s>= 0;
 }
+:CMP PRIMARY_OP_NO_IMM    is (ctx_MF=1 &
+    (op=0xcd | op=0xcf | op=0xc5 | op=0xd2 | op=0xc7 | op=0xdd |
+     op=0xdf | op=0xd9 | op=0xd5 | op=0xc1 | op=0xd1 | op=0xd7 | op=0xc3 |
+     op=0xd3)) ... & PRIMARY_OP_NO_IMM
+{
+    local data:1; deref_read8(data, PRIMARY_OP_NO_IMM);
+    do_cmp8(data);
+}
+:CMP ImmVal8    is ctx_MF=1 & op=0xc9 ; ImmVal8
+{
+    do_cmp8(ImmVal8);
+}
 
 # CMP 16 bit.
-:CMP PRIMARY_OP    is (ctx_MF=0 &
-    (op=0xc9 | op=0xcd | op=0xcf | op=0xc5 | op=0xd2 | op=0xc7 | op=0xdd |
-     op=0xdf | op=0xd9 | op=0xd5 | op=0xc1 | op=0xd1 | op=0xd7 | op=0xc3 |
-     op=0xd3)) ... & PRIMARY_OP
-{
-    local data:2; deref_read16(data, PRIMARY_OP);
+macro do_cmp16(_data) {
     local result:4;
-
-    result = sext(C) - sext(data);
+    result = sext(C) - sext(_data);
     flag16_NZ(result:2);
     CF = result s>= 0;
+}
+:CMP PRIMARY_OP_NO_IMM    is (ctx_MF=0 &
+    (op=0xcd | op=0xcf | op=0xc5 | op=0xd2 | op=0xc7 | op=0xdd |
+     op=0xdf | op=0xd9 | op=0xd5 | op=0xc1 | op=0xd1 | op=0xd7 | op=0xc3 |
+     op=0xd3)) ... & PRIMARY_OP_NO_IMM
+{
+    local data:2; deref_read16(data, PRIMARY_OP_NO_IMM);
+    do_cmp16(data);
+}
+:CMP ImmVal16    is ctx_MF=0 & op=0xc9 ; ImmVal16
+{
+    do_cmp16(ImmVal16);
 }
 
 # COP native.
@@ -636,27 +660,39 @@ macro do_dec16(_out, _data) {
 }
 
 # EOR 8 bit.
-:EOR PRIMARY_OP    is (ctx_MF=1 &
-    (op=0x49 | op=0x4d | op=0x4f | op=0x45 | op=0x52 | op=0x47 | op=0x5d |
-     op=0x5f | op=0x59 | op=0x55 | op=0x41 | op=0x51 | op=0x57 | op=0x43 |
-     op=0x53)) ... & PRIMARY_OP
-{
-    local data:1; deref_read8(data, PRIMARY_OP);
-
-    A = A ^ data;
+macro do_eor8(_data) {
+    A = A ^ _data;
     flag8_NZ(A);
+}
+:EOR PRIMARY_OP_NO_IMM    is (ctx_MF=1 &
+    (op=0x4d | op=0x4f | op=0x45 | op=0x52 | op=0x47 | op=0x5d |
+     op=0x5f | op=0x59 | op=0x55 | op=0x41 | op=0x51 | op=0x57 | op=0x43 |
+     op=0x53)) ... & PRIMARY_OP_NO_IMM
+{
+    local data:1; deref_read8(data, PRIMARY_OP_NO_IMM);
+    do_eor8(data);
+}
+:EOR ImmVal8    is ctx_MF=1 & op=0x49 ; ImmVal8
+{
+    do_eor8(ImmVal8);
 }
 
 # EOR 16 bit.
-:EOR PRIMARY_OP    is (ctx_MF=0 &
-    (op=0x49 | op=0x4d | op=0x4f | op=0x45 | op=0x52 | op=0x47 | op=0x5d |
-     op=0x5f | op=0x59 | op=0x55 | op=0x41 | op=0x51 | op=0x57 | op=0x43 |
-     op=0x53)) ... & PRIMARY_OP
-{
-    local data:2; deref_read16(data, PRIMARY_OP);
-
-    C = C ^ data;
+macro do_eor16(_data) {
+    C = C ^ _data;
     flag16_NZ(C);
+}
+:EOR PRIMARY_OP_NO_IMM    is (ctx_MF=0 &
+    (op=0x4d | op=0x4f | op=0x45 | op=0x52 | op=0x47 | op=0x5d |
+     op=0x5f | op=0x59 | op=0x55 | op=0x41 | op=0x51 | op=0x57 | op=0x43 |
+     op=0x53)) ... & PRIMARY_OP_NO_IMM
+{
+    local data:2; deref_read16(data, PRIMARY_OP_NO_IMM);
+    do_eor16(data);
+}
+:EOR ImmVal16    is ctx_MF=0 & op=0x49 ; ImmVal16
+{
+    do_eor16(ImmVal16);
 }
 
 # INC 8 bit.
@@ -1038,27 +1074,39 @@ macro do_lsr16(_out, _data) {
 :NOP    is op=0xEA  {}
 
 # ORA 8 bit.
-:ORA PRIMARY_OP    is (ctx_MF=1 &
-    (op=0x09 | op=0x0d | op=0x0f | op=0x05 | op=0x12 | op=0x07 | op=0x1d |
-     op=0x1f | op=0x19 | op=0x15 | op=0x01 | op=0x11 | op=0x17 | op=0x03 |
-     op=0x13)) ... & PRIMARY_OP
-{
-    local data:1; deref_read8(data, PRIMARY_OP);
-
-    A = A | data;
+macro do_ora8(_data) {
+    A = A | _data;
     flag8_NZ(A);
+}
+:ORA PRIMARY_OP_NO_IMM    is (ctx_MF=1 &
+    (op=0x0d | op=0x0f | op=0x05 | op=0x12 | op=0x07 | op=0x1d |
+     op=0x1f | op=0x19 | op=0x15 | op=0x01 | op=0x11 | op=0x17 | op=0x03 |
+     op=0x13)) ... & PRIMARY_OP_NO_IMM
+{
+    local data:1; deref_read8(data, PRIMARY_OP_NO_IMM);
+    do_ora8(data);
+}
+:ORA ImmVal8    is ctx_MF=1 & op=0x09 ; ImmVal8
+{
+    do_ora8(ImmVal8);
 }
 
 # ORA 16 bit.
-:ORA PRIMARY_OP    is (ctx_MF=0 &
-    (op=0x09 | op=0x0d | op=0x0f | op=0x05 | op=0x12 | op=0x07 | op=0x1d |
-     op=0x1f | op=0x19 | op=0x15 | op=0x01 | op=0x11 | op=0x17 | op=0x03 |
-     op=0x13)) ... & PRIMARY_OP
-{
-    local data:2; deref_read16(data, PRIMARY_OP);
-
-    C = C | data;
+macro do_ora16(_data) {
+    C = C | _data;
     flag16_NZ(C);
+}
+:ORA PRIMARY_OP_NO_IMM    is (ctx_MF=0 &
+    (op=0x0d | op=0x0f | op=0x05 | op=0x12 | op=0x07 | op=0x1d |
+     op=0x1f | op=0x19 | op=0x15 | op=0x01 | op=0x11 | op=0x17 | op=0x03 |
+     op=0x13)) ... & PRIMARY_OP_NO_IMM
+{
+    local data:2; deref_read16(data, PRIMARY_OP_NO_IMM);
+    do_ora16(data);
+}
+:ORA ImmVal16    is ctx_MF=0 & op=0x09 ; ImmVal16
+{
+    do_ora16(ImmVal16);
 }
 
 # PEA native.
