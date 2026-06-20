@@ -602,20 +602,18 @@ macro do_cpx16(_data) {
 }
 
 # CPY 8 bit.
-# NOTE: CPY's ctx_XF gating is inverted relative to CPX in the upstream spec
-# (8 bit uses ctx_XF=0, 16 bit uses ctx_XF=1). This is preserved verbatim so
-# the immediate constructors match the existing (possibly buggy) behaviour
-# exactly rather than silently changing it.
+# The index-register width flag (ctx_XF) selects the operand size: XF=1 means
+# 8-bit index registers, XF=0 means 16-bit, exactly as for CPX/LDX/LDY.
 macro do_cpy8(_data) {
     local result:4 = sext(YLow) - sext(_data);
     flag8_NZ(result:1);
     CF = result s>= 0;
 }
-:CPY CPXY_OP    is (ctx_XF=0 & (op=0xcc | op=0xc4)) ... & CPXY_OP {
+:CPY CPXY_OP    is (ctx_XF=1 & (op=0xcc | op=0xc4)) ... & CPXY_OP {
     local data:1; deref_read8(data, CPXY_OP);
     do_cpy8(data);
 }
-:CPY ImmVal8    is ctx_XF=0 & op=0xc0 ; ImmVal8 {
+:CPY ImmVal8    is ctx_XF=1 & op=0xc0 ; ImmVal8 {
     do_cpy8(ImmVal8);
 }
 
@@ -625,11 +623,11 @@ macro do_cpy16(_data) {
     flag16_NZ(result:2);
     CF = result s>= 0;
 }
-:CPY CPXY_OP    is (ctx_XF=1 & (op=0xcc | op=0xc4)) ... & CPXY_OP {
+:CPY CPXY_OP    is (ctx_XF=0 & (op=0xcc | op=0xc4)) ... & CPXY_OP {
     local data:2; deref_read16(data, CPXY_OP);
     do_cpy16(data);
 }
-:CPY ImmVal16    is ctx_XF=1 & op=0xc0 ; ImmVal16 {
+:CPY ImmVal16    is ctx_XF=0 & op=0xc0 ; ImmVal16 {
     do_cpy16(ImmVal16);
 }
 
