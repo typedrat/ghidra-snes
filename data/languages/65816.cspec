@@ -9,9 +9,39 @@
     <varnode space="stack" offset="1" size="2"/>
   </returnaddress>
   <default_proto>
+    <!-- Hand-written 65816 game code passes arguments primarily in the registers
+         (index in C, pointers in X/Y). Exposing C/X/Y as input pentries lets the
+         Decompiler Parameter ID analyzer auto-detect which registers each routine
+         reads-before-write and promote them to parameters (e.g. a loader taking an
+         index in C, an object spawner taking its struct pointer in X). The
+         accumulator pentry spans 8-bit A (low byte) and 16-bit C via
+         minsize=1/maxsize=2; likewise XLow/X and YLow/Y. C/X/Y are killed by call.
+
+         NOTE: this code also passes some args on the stack, but a stack input
+         pentry is intentionally omitted for now - it has to be modeled carefully
+         to avoid destabilizing analysis, so it is left as a follow-up. -->
     <prototype name="__unknowncall" extrapop="0" stackshift="0" strategy="register">
-      <input/>
-      <output/>
+      <input>
+        <pentry minsize="1" maxsize="2">
+          <register name="C"/>
+        </pentry>
+        <pentry minsize="1" maxsize="2">
+          <register name="X"/>
+        </pentry>
+        <pentry minsize="1" maxsize="2">
+          <register name="Y"/>
+        </pentry>
+      </input>
+      <output>
+        <pentry minsize="1" maxsize="2">
+          <register name="C"/>
+        </pentry>
+      </output>
+      <killedbycall>
+        <register name="C"/>
+        <register name="X"/>
+        <register name="Y"/>
+      </killedbycall>
     </prototype>
   </default_proto>
 </compiler_spec>
