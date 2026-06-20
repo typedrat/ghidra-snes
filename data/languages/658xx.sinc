@@ -116,10 +116,10 @@ PRIMARY_OP_NO_IMM: RefDPIndLongIdx    is bbb=5 & cc=3; RefDPIndLongIdx  { export
 PRIMARY_OP_NO_IMM: RefSR    is bbb=0 & cc=3; RefSR  { export RefSR; }
 PRIMARY_OP_NO_IMM: RefSRIndIdx    is bbb=4 & cc=3; RefSRIndIdx  { export RefSRIndIdx; }
 #
-# PRIMARY_OP is the whole subset.
-#
-PRIMARY_OP: PRIMARY_OP_NO_IMM    is PRIMARY_OP_NO_IMM  { export PRIMARY_OP_NO_IMM; }
-PRIMARY_OP: RefImmMF    is bbb=2 & cc=1; RefImmMF  { export RefImmMF; }
+# Immediate addressing for the primary instruction group is no longer part of a
+# shared operand subtable: each instruction defines its own immediate
+# constructor (matching the immediate opcode and using ImmVal8/ImmVal16) so the
+# operand decompiles as a literal constant rather than a bus-space memory read.
 
 # Subsets of the addressing modes for some secondary instructions (most of the remaining
 # instructions that aren't branches/jumps and don't use implied addressing).
@@ -145,15 +145,11 @@ SHIFT_OP: SEC_OP_X    is SEC_OP_X  { export SEC_OP_X; }
 ##################################################################
 
 # ADC 8 bit.
-:ADC PRIMARY_OP    is (ctx_MF=1 &
-    (op=0x69 | op=0x6d | op=0x6f | op=0x65 | op=0x72 | op=0x67 | op=0x7d |
-     op=0x7f | op=0x79 | op=0x75 | op=0x61 | op=0x71 | op=0x77 | op=0x63 |
-     op=0x73)) ... & PRIMARY_OP
-{
+macro do_adc8(_data) {
     local is_dec:1 = DF;
     local not_dec:1 = !DF;
     local do_skip_dec_adjust:1;
-    local data:1; deref_read8(data, PRIMARY_OP);
+    local data:1 = _data;
     local result:4;
 
     if (is_dec) goto <decimal>;
@@ -188,17 +184,25 @@ SHIFT_OP: SEC_OP_X    is SEC_OP_X  { export SEC_OP_X; }
     flag8_NZ(result8);
     A = result8;
 }
+:ADC PRIMARY_OP_NO_IMM    is (ctx_MF=1 &
+    (op=0x6d | op=0x6f | op=0x65 | op=0x72 | op=0x67 | op=0x7d |
+     op=0x7f | op=0x79 | op=0x75 | op=0x61 | op=0x71 | op=0x77 | op=0x63 |
+     op=0x73)) ... & PRIMARY_OP_NO_IMM
+{
+    local data:1; deref_read8(data, PRIMARY_OP_NO_IMM);
+    do_adc8(data);
+}
+:ADC ImmVal8    is ctx_MF=1 & op=0x69 ; ImmVal8
+{
+    do_adc8(ImmVal8);
+}
 
 # ADC 16 bit.
-:ADC PRIMARY_OP    is (ctx_MF=0 &
-    (op=0x69 | op=0x6d | op=0x6f | op=0x65 | op=0x72 | op=0x67 | op=0x7d |
-     op=0x7f | op=0x79 | op=0x75 | op=0x61 | op=0x71 | op=0x77 | op=0x63 |
-     op=0x73)) ... & PRIMARY_OP
-{
+macro do_adc16(_data) {
     local is_dec:1 = DF;
     local not_dec:1 = !DF;
     local do_skip_dec_adjust:1;
-    local data:2; deref_read16(data, PRIMARY_OP);
+    local data:2 = _data;
     local result:4;
 
     if (is_dec) goto <decimal>;
@@ -246,6 +250,18 @@ SHIFT_OP: SEC_OP_X    is SEC_OP_X  { export SEC_OP_X; }
     local result16:2 = result:2;
     flag16_NZ(result16);
     C = result16;
+}
+:ADC PRIMARY_OP_NO_IMM    is (ctx_MF=0 &
+    (op=0x6d | op=0x6f | op=0x65 | op=0x72 | op=0x67 | op=0x7d |
+     op=0x7f | op=0x79 | op=0x75 | op=0x61 | op=0x71 | op=0x77 | op=0x63 |
+     op=0x73)) ... & PRIMARY_OP_NO_IMM
+{
+    local data:2; deref_read16(data, PRIMARY_OP_NO_IMM);
+    do_adc16(data);
+}
+:ADC ImmVal16    is ctx_MF=0 & op=0x69 ; ImmVal16
+{
+    do_adc16(ImmVal16);
 }
 
 # AND 8 bit.
@@ -347,38 +363,46 @@ macro do_asl16(_out, _data) {
     if (ZF==1) goto MemPCRelBra;
 }
 
-BIT_OP: SEC_OP_X    is (aaa=1 & cc=0) ... & SEC_OP_X  { export SEC_OP_X; }
-BIT_OP: RefImmMF    is op=0x89; RefImmMF  { export RefImmMF; }
+# BIT_OP_NO_IMM is the BIT addressing modes excluding immediate; immediate is
+# handled by dedicated instruction constructors using ImmVal8/ImmVal16.
+BIT_OP_NO_IMM: SEC_OP_X    is (aaa=1 & cc=0) ... & SEC_OP_X  { export SEC_OP_X; }
 
 # BIT 8 bit.
-:BIT BIT_OP    is (ctx_MF=1 &
-    (op=0x89 | op=0x2c | op=0x24 | op=0x3c | op=0x34) & op) ... & BIT_OP
+# Memory addressing modes update N and V from the operand; immediate (#imm,
+# opcode 0x89) only affects Z. The two are now separate constructors, so each
+# path's flag behaviour is selected statically (no runtime is_immediate check).
+:BIT BIT_OP_NO_IMM    is (ctx_MF=1 &
+    (op=0x2c | op=0x24 | op=0x3c | op=0x34) & op) ... & BIT_OP_NO_IMM
 {
-    local data:1; deref_read8(data, BIT_OP);
-    local is_immediate:1 = op:1 == 0x89;
+    local data:1; deref_read8(data, BIT_OP_NO_IMM);
 
-    if (is_immediate) goto <skip_flags>;
     flag8_N(data);
     VF = (data & 0x40) != 0;
 
-    <skip_flags>
     local result:1 = A & data;
+    flag8_Z(result);
+}
+:BIT ImmVal8    is ctx_MF=1 & op=0x89 ; ImmVal8
+{
+    local result:1 = A & ImmVal8;
     flag8_Z(result);
 }
 
 # BIT 16 bit.
-:BIT BIT_OP    is (ctx_MF=0 &
-    (op=0x89 | op=0x2c | op=0x24 | op=0x3c | op=0x34) & op) ... & BIT_OP
+:BIT BIT_OP_NO_IMM    is (ctx_MF=0 &
+    (op=0x2c | op=0x24 | op=0x3c | op=0x34) & op) ... & BIT_OP_NO_IMM
 {
-    local data:2; deref_read16(data, BIT_OP);
-    local is_immediate:1 = op:1 == 0x89;
+    local data:2; deref_read16(data, BIT_OP_NO_IMM);
 
-    if (is_immediate) goto <skip_flags>;
     flag16_N(data);
     VF = (data & 0x4000) != 0;
 
-    <skip_flags>
     local result:2 = C & data;
+    flag16_Z(result);
+}
+:BIT ImmVal16    is ctx_MF=0 & op=0x89 ; ImmVal16
+{
+    local result:2 = C & ImmVal16;
     flag16_Z(result);
 }
 
@@ -546,39 +570,67 @@ macro do_cmp16(_data) {
     goto [target];
 }
 
+# CPXY_OP excludes immediate; immediate is handled by dedicated constructors.
 CPXY_OP: SEC_OP_COMMON    is (cc=0) ... & SEC_OP_COMMON  { export SEC_OP_COMMON; }
-CPXY_OP: RefImmXF    is bbb=0; RefImmXF  { export RefImmXF; }
 
 # CPX 8 bit.
-:CPX CPXY_OP    is (ctx_XF=1 & (op=0xe0 | op=0xec | op=0xe4)) ... & CPXY_OP {
-    local data:1; deref_read8(data, CPXY_OP);
-    local result:4 = sext(XLow) - sext(data);
+macro do_cpx8(_data) {
+    local result:4 = sext(XLow) - sext(_data);
     flag8_NZ(result:1);
     CF = result s>= 0;
+}
+:CPX CPXY_OP    is (ctx_XF=1 & (op=0xec | op=0xe4)) ... & CPXY_OP {
+    local data:1; deref_read8(data, CPXY_OP);
+    do_cpx8(data);
+}
+:CPX ImmVal8    is ctx_XF=1 & op=0xe0 ; ImmVal8 {
+    do_cpx8(ImmVal8);
 }
 
 # CPX 16 bit.
-:CPX CPXY_OP    is (ctx_XF=0 & (op=0xe0 | op=0xec | op=0xe4)) ... & CPXY_OP {
-    local data:2; deref_read16(data, CPXY_OP);
-    local result:4 = sext(X) - sext(data);
+macro do_cpx16(_data) {
+    local result:4 = sext(X) - sext(_data);
     flag16_NZ(result:2);
     CF = result s>= 0;
+}
+:CPX CPXY_OP    is (ctx_XF=0 & (op=0xec | op=0xe4)) ... & CPXY_OP {
+    local data:2; deref_read16(data, CPXY_OP);
+    do_cpx16(data);
+}
+:CPX ImmVal16    is ctx_XF=0 & op=0xe0 ; ImmVal16 {
+    do_cpx16(ImmVal16);
 }
 
 # CPY 8 bit.
-:CPY CPXY_OP    is (ctx_XF=0 & (op=0xc0 | op=0xcc | op=0xc4)) ... & CPXY_OP {
-    local data:1; deref_read8(data, CPXY_OP);
-    local result:4 = sext(YLow) - sext(data);
+# NOTE: CPY's ctx_XF gating is inverted relative to CPX in the upstream spec
+# (8 bit uses ctx_XF=0, 16 bit uses ctx_XF=1). This is preserved verbatim so
+# the immediate constructors match the existing (possibly buggy) behaviour
+# exactly rather than silently changing it.
+macro do_cpy8(_data) {
+    local result:4 = sext(YLow) - sext(_data);
     flag8_NZ(result:1);
     CF = result s>= 0;
 }
+:CPY CPXY_OP    is (ctx_XF=0 & (op=0xcc | op=0xc4)) ... & CPXY_OP {
+    local data:1; deref_read8(data, CPXY_OP);
+    do_cpy8(data);
+}
+:CPY ImmVal8    is ctx_XF=0 & op=0xc0 ; ImmVal8 {
+    do_cpy8(ImmVal8);
+}
 
 # CPY 16 bit.
-:CPY CPXY_OP    is (ctx_XF=1 & (op=0xc0 | op=0xcc | op=0xc4)) ... & CPXY_OP {
-    local data:2; deref_read16(data, CPXY_OP);
-    local result:4 = sext(Y) - sext(data);
+macro do_cpy16(_data) {
+    local result:4 = sext(Y) - sext(_data);
     flag16_NZ(result:2);
     CF = result s>= 0;
+}
+:CPY CPXY_OP    is (ctx_XF=1 & (op=0xcc | op=0xc4)) ... & CPXY_OP {
+    local data:2; deref_read16(data, CPXY_OP);
+    do_cpy16(data);
+}
+:CPY ImmVal16    is ctx_XF=1 & op=0xc0 ; ImmVal16 {
+    do_cpy16(ImmVal16);
 }
 
 DEC_INC_OP: SEC_OP_X    is (cc=2) ... & SEC_OP_X  { export SEC_OP_X; }
@@ -895,46 +947,74 @@ macro do_lda16(_data) {
     do_lda16(ImmVal16);
 }
 
+# LDX_OP excludes immediate; immediate (opcode 0xa2) is a dedicated constructor.
 LDX_OP: SEC_OP_Y    is (aaa=5) ... & SEC_OP_Y  { export SEC_OP_Y; }
-LDX_OP: RefImmXF    is bbb=0; RefImmXF  { export RefImmXF; }
 
 # LDX 8 bit.
+macro do_ldx8(_data) {
+    flag8_NZ(_data);
+    XLow = _data;
+}
 :LDX LDX_OP    is (ctx_XF=1 &
-    (op=0xa2 | op=0xae | op=0xa6 | op=0xbe | op=0xb6)) ... & LDX_OP
+    (op=0xae | op=0xa6 | op=0xbe | op=0xb6)) ... & LDX_OP
 {
     local data:1; deref_read8(data, LDX_OP);
-    flag8_NZ(data);
-    XLow = data;
+    do_ldx8(data);
+}
+:LDX ImmVal8    is ctx_XF=1 & op=0xa2 ; ImmVal8
+{
+    do_ldx8(ImmVal8);
 }
 
 # LDX 16 bit.
+macro do_ldx16(_data) {
+    flag16_NZ(_data);
+    X = _data;
+}
 :LDX LDX_OP    is (ctx_XF=0 &
-    (op=0xa2 | op=0xae | op=0xa6 | op=0xbe | op=0xb6)) ... & LDX_OP
+    (op=0xae | op=0xa6 | op=0xbe | op=0xb6)) ... & LDX_OP
 {
     local data:2; deref_read16(data, LDX_OP);
-    flag16_NZ(data);
-    X = data;
+    do_ldx16(data);
+}
+:LDX ImmVal16    is ctx_XF=0 & op=0xa2 ; ImmVal16
+{
+    do_ldx16(ImmVal16);
 }
 
+# LDY_OP excludes immediate; immediate (opcode 0xa0) is a dedicated constructor.
 LDY_OP: SEC_OP_X    is (aaa=5) ... & SEC_OP_X  { export SEC_OP_X; }
-LDY_OP: RefImmXF    is bbb=0; RefImmXF  { export RefImmXF; }
 
 # LDY 8 bit.
+macro do_ldy8(_data) {
+    flag8_NZ(_data);
+    YLow = _data;
+}
 :LDY LDY_OP    is (ctx_XF=1 &
-    (op=0xa0 | op=0xac | op=0xa4 | op=0xbc | op=0xb4)) ... & LDY_OP
+    (op=0xac | op=0xa4 | op=0xbc | op=0xb4)) ... & LDY_OP
 {
     local data:1; deref_read8(data, LDY_OP);
-    flag8_NZ(data);
-    YLow = data;
+    do_ldy8(data);
+}
+:LDY ImmVal8    is ctx_XF=1 & op=0xa0 ; ImmVal8
+{
+    do_ldy8(ImmVal8);
 }
 
 # LDY 16 bit.
+macro do_ldy16(_data) {
+    flag16_NZ(_data);
+    Y = _data;
+}
 :LDY LDY_OP    is (ctx_XF=0 &
-    (op=0xa0 | op=0xac | op=0xa4 | op=0xbc | op=0xb4)) ... & LDY_OP
+    (op=0xac | op=0xa4 | op=0xbc | op=0xb4)) ... & LDY_OP
 {
     local data:2; deref_read16(data, LDY_OP);
-    flag16_NZ(data);
-    Y = data;
+    do_ldy16(data);
+}
+:LDY ImmVal16    is ctx_XF=0 & op=0xa0 ; ImmVal16
+{
+    do_ldy16(ImmVal16);
 }
 
 # LSR 8 bit.
@@ -1622,15 +1702,11 @@ macro do_ror16(_out, _data) {
 }
 
 # SBC 8 bit binary.
-:SBC PRIMARY_OP    is (ctx_MF=1 &
-    (op=0xe9 | op=0xed | op=0xef | op=0xe5 | op=0xf2 | op=0xe7 | op=0xfd |
-     op=0xff | op=0xf9 | op=0xf5 | op=0xe1 | op=0xf1 | op=0xf7 | op=0xe3 |
-     op=0xf3)) ... & PRIMARY_OP
-{
+macro do_sbc8(_data) {
     local is_dec:1 = DF == 1;
     local not_dec:1 = DF == 0;
     local do_skip_dec_adjust:1;
-    local data:1; deref_read8(data, PRIMARY_OP);
+    local data:1 = _data;
     data = ~data;
     local result:4;
 
@@ -1659,21 +1735,29 @@ macro do_ror16(_out, _data) {
     result = result - 0x60;
     <skip_dec_adjust_flags>
     CF = result s> 0xFF;
-    result8:1 = result:1;
+    local result8:1 = result:1;
     flag8_NZ(result8);
     A = result8;
 }
+:SBC PRIMARY_OP_NO_IMM    is (ctx_MF=1 &
+    (op=0xed | op=0xef | op=0xe5 | op=0xf2 | op=0xe7 | op=0xfd |
+     op=0xff | op=0xf9 | op=0xf5 | op=0xe1 | op=0xf1 | op=0xf7 | op=0xe3 |
+     op=0xf3)) ... & PRIMARY_OP_NO_IMM
+{
+    local data:1; deref_read8(data, PRIMARY_OP_NO_IMM);
+    do_sbc8(data);
+}
+:SBC ImmVal8    is ctx_MF=1 & op=0xe9 ; ImmVal8
+{
+    do_sbc8(ImmVal8);
+}
 
 # SBC 16 bit binary.
-:SBC PRIMARY_OP    is (ctx_MF=0 &
-    (op=0xe9 | op=0xed | op=0xef | op=0xe5 | op=0xf2 | op=0xe7 | op=0xfd |
-     op=0xff | op=0xf9 | op=0xf5 | op=0xe1 | op=0xf1 | op=0xf7 | op=0xe3 |
-     op=0xf3)) ... & PRIMARY_OP
-{
+macro do_sbc16(_data) {
     local is_dec:1 = DF == 1;
     local not_dec:1 = DF == 0;
     local do_skip_dec_adjust:1;
-    local data:2; deref_read16(data, PRIMARY_OP);
+    local data:2 = _data;
     data = ~data;
     local result:4;
 
@@ -1719,6 +1803,18 @@ macro do_ror16(_out, _data) {
     local result16:2 = result:2;
     flag16_NZ(result16);
     C = result16;
+}
+:SBC PRIMARY_OP_NO_IMM    is (ctx_MF=0 &
+    (op=0xed | op=0xef | op=0xe5 | op=0xf2 | op=0xe7 | op=0xfd |
+     op=0xff | op=0xf9 | op=0xf5 | op=0xe1 | op=0xf1 | op=0xf7 | op=0xe3 |
+     op=0xf3)) ... & PRIMARY_OP_NO_IMM
+{
+    local data:2; deref_read16(data, PRIMARY_OP_NO_IMM);
+    do_sbc16(data);
+}
+:SBC ImmVal16    is ctx_MF=0 & op=0xe9 ; ImmVal16
+{
+    do_sbc16(ImmVal16);
 }
 
 :SEC    is op=0x38
