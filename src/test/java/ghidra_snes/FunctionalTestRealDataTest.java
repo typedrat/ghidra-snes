@@ -471,4 +471,28 @@ class FunctionalTestRealDataTest {
       });
     }
   }
+
+  @Order(10)
+  @DisplayName("Defaults DBR and DP register context to 0")
+  @Tag("harness")
+  @Test
+  void defaultsDbrAndDpRegisterContextToZero() throws Exception {
+    Path sample = REAL_DATA_DIR.resolve("smashing_the_stack.sfc");
+    Assumptions.assumeTrue(Files.exists(sample), () -> "Missing real data: smashing_the_stack.sfc");
+
+    byte[] romData = Files.readAllBytes(sample);
+    try (LoadResults<Program> loadResults = ProgramFactory.loadSnesRom("smashing_the_stack", romData)) {
+      loadResults.getPrimary().apply(program -> {
+        var context = program.getProgramContext();
+        var probe = program.getAddressFactory().getDefaultAddressSpace().getAddress(0x808000L);
+
+        var dbr = context.getRegister("DBR");
+        var dp = context.getRegister("DP");
+        assertNotNull(dbr, "DBR register should be defined by the language");
+        assertNotNull(dp, "DP register should be defined by the language");
+        assertEquals(java.math.BigInteger.ZERO, context.getValue(dbr, probe, false));
+        assertEquals(java.math.BigInteger.ZERO, context.getValue(dp, probe, false));
+      });
+    }
+  }
 }

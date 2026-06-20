@@ -20,6 +20,7 @@ import ghidra_snes.SnesCartridge;
 import ghidra_snes.common.RomMapType;
 import ghidra_snes.common.RomMapType.MappingChunk;
 import ghidra_snes.common.registers.Vectors;
+import ghidra_snes.ghidra.CpuContext;
 import ghidra_snes.ghidra.LanguageHelper;
 import ghidra_snes.ghidra.MemoryMap;
 import ghidra_snes.options.SnesOptions;
@@ -165,6 +166,9 @@ public class SnesRomLoader extends AbstractProgramLoader {
       // must register them.
       Vectors.createVectorEntryPoints(
           program, MemoryMap.canonicalRomBankBase(romType, cartridge.getRomHeader()));
+      // Assume DBR=0/DP=0 program-wide so absolute and direct-page accesses
+      // decompile cleanly; per-function exceptions are overridden by hand.
+      CpuContext.applyDefaults(program);
 
       SnesOptions.initializeFromCartridge(program, cartridge);
     } catch (Exception e) {
