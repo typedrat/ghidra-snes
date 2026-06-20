@@ -56,17 +56,20 @@ public final class Vectors {
    * Registers CPU vector handlers as program entry points so auto-analysis can
    * seed disassembly without manual intervention.
    *
-   * <p>Each vector is a 2-byte bank-$00 pointer; the SNES forces the program
-   * bank to $00 on reset/interrupt. We translate the pointer into the canonical
-   * ROM bank that actually holds those bytes ({@code canonicalBankBase | target})
-   * and mark it as an external entry point, also placing a handler label.
+   * <p>Each vector is a 2-byte bank-$00 pointer. The vector bytes are read from
+   * the canonical (initialized) ROM bank, but the entry point is registered at
+   * the bank-$00 target itself, because the 65816 forces the program bank to $00
+   * on reset/interrupt and the handlers execute there (via the mapped low-bank
+   * ROM mirrors). This keeps disassembly in a single bank family instead of
+   * duplicating it against Ghidra's bank-$00 resolution of indirect jumps.
    *
    * <p>Vectors that point below {@code $8000} (unused entries, typically $0000)
-   * or whose target is not backed by an initialized block are skipped. Native
-   * and emulation vectors that share a target are de-duplicated.
+   * or whose target is not backed by an executable ROM block/mirror are skipped.
+   * Native and emulation vectors that share a target are de-duplicated.
    *
    * @param program the current program
-   * @param canonicalBankBase canonical ROM bank base backing CPU bank $00
+   * @param canonicalBankBase canonical ROM bank base backing CPU bank $00, used
+   *     to read the vector bytes from initialized memory
    *     (see {@link ghidra_snes.ghidra.MemoryMap#canonicalRomBankBase})
    * @return number of entry points created
    */
@@ -92,14 +95,21 @@ public final class Vectors {
         continue;
       }
 
-      long entry = canonicalBankBase | target;
+      // Seed the entry in bank $00: on reset/interrupt the 65816 forces the
+      // program bank to 0, so handlers actually execute there (the low banks are
+      // mapped ROM mirrors). Seeding the canonical high bank instead would fight
+      // Ghidra's bank-$00 resolution of indirect 16-bit jump-table targets and
+      // produce a duplicate disassembly in both bank families.
+      long entry = target & 0xffffL;
       if (!seeded.add(entry)) {
         continue;
       }
 
       Address entryAddress = space.getAddress(entry);
       MemoryBlock entryBlock = memory.getBlock(entryAddress);
-      if (entryBlock == null || !entryBlock.isInitialized()) {
+      // Accept executable ROM blocks and (byte-mapped) ROM mirrors, which read
+      // through to canonical ROM; skip RAM/IO and unmapped space.
+      if (entryBlock == null || !entryBlock.isExecute()) {
         continue;
       }
 
