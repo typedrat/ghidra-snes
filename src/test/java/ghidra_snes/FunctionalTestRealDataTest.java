@@ -488,10 +488,13 @@ class FunctionalTestRealDataTest {
 
         var dbr = context.getRegister("DBR");
         var dp = context.getRegister("DP");
+        var ef = context.getRegister("ctx_EF");
         assertNotNull(dbr, "DBR register should be defined by the language");
         assertNotNull(dp, "DP register should be defined by the language");
+        assertNotNull(ef, "ctx_EF register should be defined by the language");
         assertEquals(java.math.BigInteger.ZERO, context.getValue(dbr, probe, false));
         assertEquals(java.math.BigInteger.ZERO, context.getValue(dp, probe, false));
+        assertEquals(java.math.BigInteger.ZERO, context.getValue(ef, probe, false));
       });
     }
   }

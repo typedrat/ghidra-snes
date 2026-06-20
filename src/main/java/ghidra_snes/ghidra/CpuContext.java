@@ -5,7 +5,7 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSpace;
 import ghidra.program.model.lang.Register;
 import ghidra.program.model.listing.Program;
-import ghidra.program.util.ProgramContext;
+import ghidra.program.model.listing.ProgramContext;
 import java.math.BigInteger;
 
 /**
@@ -29,8 +29,17 @@ public final class CpuContext {
   private CpuContext() {}
 
   /**
-   * Sets {@code DBR=0} and {@code DP=0} as the default register context across
-   * the whole address space.
+   * Sets {@code DBR=0}, {@code DP=0} and {@code ctx_EF=0} (native mode) as the
+   * default register context across the whole address space.
+   *
+   * <p>{@code ctx_EF} is the emulation-mode context bit. The direct-page
+   * addressing macros branch on it for 6502-style page wrapping; left unknown it
+   * forces the decompiler to emit a wrap conditional on every {@code <dp} access
+   * for code the width context never flowed into (e.g. computed-jump dispatch
+   * handlers). Almost all SNES code runs in native mode, so default it to 0;
+   * the m/x width fields ({@code ctx_MF}/{@code ctx_XF}) are deliberately left to
+   * SLEIGH {@code globalset} propagation, since blanket-setting a width would
+   * mis-decode whichever paths run in the other width.
    *
    * @param program the current program
    */
@@ -42,6 +51,7 @@ public final class CpuContext {
 
     setRegisterValue(context, "DBR", start, end);
     setRegisterValue(context, "DP", start, end);
+    setRegisterValue(context, "ctx_EF", start, end);
   }
 
   private static void setRegisterValue(
